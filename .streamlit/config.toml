@@ -1,0 +1,13 @@
+[theme]
+primaryColor="#5d83e2"
+backgroundColor="#102240"
+secondaryBackgroundColor="#283452"
+textColor="#d7ebef"
+
+[server]
+port = 8502
+maxUploadSize = 200
+maxMessageSize = 300
+
+[browser]
+gatherUsageStats = false
