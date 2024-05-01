@@ -54,12 +54,9 @@ def verificar_archivo_lecturas(df: pd.DataFrame) -> bool:
 
 # ---------------------------------------------------------------------------------------------
 def obtener_lecturas() -> pd.DataFrame:
-    with st.sidebar:
-        # Obtener archivo fuente de datos de precipitación (lecturas)
-        archivo_lecturas = st.file_uploader(
-            MENSAJES['fileuploaderprompt'], type=['csv'], 
-            help=MENSAJES['fileuploaderhelp']
-        )
+    archivo_lecturas = st.sidebar.file_uploader(
+        MENSAJES['fileuploaderprompt'], type=['csv'], help=MENSAJES['fileuploaderhelp']
+    )
     if archivo_lecturas is None:
         return None
     df = cargar_archivo_de_cache(archivo_lecturas)
@@ -72,12 +69,12 @@ def obtener_lecturas() -> pd.DataFrame:
 
 # ---------------------------------------------------------------------------------------------
 def obtener_col_fechahora(lista_columnas: list[str]) -> str:
-    columna = st.sidebar.selectbox('Fecha-hora', lista_columnas, index=None)
+    columna = st.sidebar.selectbox(MENSAJES['elegircolfechahora'], lista_columnas, index=None)
     return columna
 
 # ---------------------------------------------------------------------------------------------
 def obtener_col_precipitacion(lista_columnas: list[str]) -> str:
-    columna =  st.sidebar.selectbox('Precipitacion', lista_columnas, index=None)
+    columna =  st.sidebar.selectbox(MENSAJES['elegircolprecipitacion'], lista_columnas, index=None)
     return columna
 
 # =============================================================================================
@@ -99,6 +96,12 @@ if (col_fechahora is None):
 col_precipitacion = obtener_col_precipitacion(lista_columnas)
 if (col_precipitacion is None):
     st.info(MENSAJES['elegircolprecipitacion'])
+    st.stop()
+
+if col_fechahora == col_precipitacion:
+    st.info(MENSAJES['elegircolfechahora'])
+    st.info(MENSAJES['elegircolprecipitacion'])
+    st.sidebar.error(MENSAJES['elegircolsdiferentes'])
     st.stop()
 
 if st.toggle('Ver contenido'):

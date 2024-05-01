@@ -35,4 +35,5 @@ MENSAJES = {
 
     'elegircolfechahora'     : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion' : 'Seleccione columna de precipitación.',
+    'elegircolsdiferentes'   : 'No puede seleccionar la misma columna.'
 }
