@@ -37,7 +37,7 @@ def inicializar():
             menu_items={'About' : MENSAJES['about']}
         )
     st.sidebar.subheader(f':blue[{MENSAJES["appname"]} {MENSAJES["appversion"]}] :rain_cloud:')
-    st.write(MENSAJES['appdescription'])
+    st.sidebar.caption(MENSAJES['appdescription'])
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
@@ -101,6 +101,7 @@ if df_archivo is None:
     st.stop()
 else:
     with tab_archivo:
+        # TODO: mostrar nombre de archivo
         st.write(MENSAJES['previsualarchivo'])
         st.caption(MENSAJES['shapelecturas'](df_archivo.shape))
         c1, c2, c3 = st.columns([0.2, 0.4, 0.4])
