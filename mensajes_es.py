@@ -20,7 +20,6 @@ MENSAJES = {
         ### Contacto: hyetiascan@teoktonos.com
         ''',
 
-    'fileuploaderprompt'      : 'Selección de archivo de lecturas',
     'fileuploaderhelp'        : '''
             El archivo debe contener lecturas de precipitación consecutivas en serie 
             de tiempo ordenada, con al menos una columna de fecha/hora (datetime) y
@@ -30,14 +29,19 @@ MENSAJES = {
     'stcachespinner'          : 'Cargando...',
 
     'errorlecturas'           : 'Error en archivo seleccionado.',
-    'nohaylecturas'           : 'Archivo de lecturas requerido.',
+    'elegirarchivo'           : 'Seleccione archivo de lecturas.',
     'shapelecturas'           : lambda s: f'Cargados {s[0]} registros, {s[1]} columnas.',
 
     'elegircolfechahora'      : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion'  : 'Seleccione columna de precipitación.',
     'elegircolsdiferentes'    : 'No puede seleccionar la misma columna.',
-
     'errortipocolumna'        : 'Error en tipo de columna',
+    'columnasok'              : 'Columnas seleccionadas.',
 
-    'previsualizararchivo'    : 'Previsualizar primeros y últimos registros.',
+    'tablecturas'             : 'Lecturas',
+    'tabarchivo'              : 'Archivo',
+
+    'previsualarchivo'        : 'Previsualizar primeros y últimos registros.',
+    'previsualcolnom'         : 'Columna',
+    'previsualtipnom'         : 'Tipo',
 }

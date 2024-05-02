@@ -37,7 +37,7 @@ def inicializar():
             menu_items={'About' : MENSAJES['about']}
         )
     st.sidebar.subheader(f':blue[{MENSAJES["appname"]} {MENSAJES["appversion"]}] :rain_cloud:')
-    st.subheader(MENSAJES['appdescription'])
+    st.write(MENSAJES['appdescription'])
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
@@ -49,18 +49,19 @@ def cargar_archivo_de_cache(archivo_io: BytesIO) -> pd.DataFrame:
     return df
 
 # ---------------------------------------------------------------------------------------------
-def verificar_archivo_lecturas(df: pd.DataFrame) -> bool:
-    return (df is not None) and (df.shape[1] >= 2)
+def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:
+    # Mínimo dos registros y dos columnas
+    return (df is not None) and (df.shape[1] >= 2) and (df.shape[0] >= 2)
 
 # ---------------------------------------------------------------------------------------------
-def obtener_lecturas() -> pd.DataFrame:
-    archivo_lecturas = st.sidebar.file_uploader(
-        MENSAJES['fileuploaderprompt'], type=['csv'], help=MENSAJES['fileuploaderhelp']
+def obtener_archivo_lecturas() -> pd.DataFrame:
+    archivo = st.sidebar.file_uploader(
+        '', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed'
     )
-    if archivo_lecturas is None:
+    if archivo is None:
         return None
-    df = cargar_archivo_de_cache(archivo_lecturas)
-    if not verificar_archivo_lecturas(df):
+    df = cargar_archivo_de_cache(archivo)
+    if not verificar_lecturas_cargadas(df):
         st.sidebar.error(MENSAJES['errorlecturas'])
         return None
     else:
@@ -85,27 +86,40 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
 inicializar()
 
 zona_mensajes = st.empty()
-tab_archivo, tab_lecturas = st.tabs(['Archivo', 'Lecturas'])
+lista_tabs = [
+    MENSAJES['tabarchivo'],
+    MENSAJES['tablecturas'],
+    'Eventos',
+    'Gráficas',
+]
+tab_archivo, tab_lecturas, tab_eventos, tab_graficas = st.tabs(lista_tabs)
 
 # ---------------------------------------------------------------------------------------------
-df_lecturas = obtener_lecturas()
-if df_lecturas is None:
-    zona_mensajes.info(MENSAJES['nohaylecturas'])
+df_archivo = obtener_archivo_lecturas()
+if df_archivo is None:
+    zona_mensajes.info(MENSAJES['elegirarchivo'])
     st.stop()
 else:
     with tab_archivo:
-        st.write(MENSAJES['previsualizararchivo'])
-        st.caption(MENSAJES['shapelecturas'](df_lecturas.shape))
+        st.write(MENSAJES['previsualarchivo'])
+        st.caption(MENSAJES['shapelecturas'](df_archivo.shape))
         c1, c2, c3 = st.columns([0.2, 0.4, 0.4])
-        c1.dataframe(df_lecturas.dtypes, column_config={'': 'Columna', '0': 'Tipo'})
-        c2.dataframe(df_lecturas.head(50))
-        c3.dataframe(df_lecturas.tail(50))
+        num_vista = c1.slider(
+            '', min_value=10, max_value=df_archivo.shape[0], value=10, step=100, 
+            label_visibility='collapsed',
+        )
+        c1.dataframe(
+            df_archivo.dtypes, 
+            column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
+        )
+        c2.dataframe(df_archivo.head(num_vista))
+        c3.dataframe(df_archivo.tail(num_vista)[::-1])  # Mostrar al revés
 
 # ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
     prompt=MENSAJES['elegircolfechahora'], 
     tipos_validos=['object', 'datetime64'],
-    df=df_lecturas
+    df=df_archivo
 )
 if (col_fechahora is None):
     zona_mensajes.info(MENSAJES['elegircolfechahora'])
@@ -115,7 +129,7 @@ if (col_fechahora is None):
 col_precipitacion = elegir_nombre_columna(
     prompt=MENSAJES['elegircolprecipitacion'], 
     tipos_validos=['int64', 'float64'],
-    df=df_lecturas
+    df=df_archivo
 )
 if (col_precipitacion is None):
     zona_mensajes.info(MENSAJES['elegircolprecipitacion'])
@@ -127,4 +141,20 @@ if (col_fechahora == col_precipitacion):
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-tab_lecturas.dataframe(df_lecturas[[col_fechahora, col_precipitacion]])
+st.sidebar.success(MENSAJES['columnasok'])
+df_lecturas = df_archivo[[col_fechahora, col_precipitacion]].copy()
+c1, c2, c3 = tab_lecturas.columns(3)
+c1.latex(r'''
+    \sum_{k=0}^{n-1} ar^k =
+    a \left(\frac{1-r^{n}}{1-r}\right)
+    ''')
+c1.latex(r'''
+    \sum_{k=0}^{n-1} ar^k =
+    a \left(\frac{1-r^{n}}{1-r}\right)
+    ''')
+c1.latex(r'''
+    \sum_{k=0}^{n-1} ar^k =
+    a \left(\frac{1-r^{n}}{1-r}\right)
+    ''')
+c2.write(df_lecturas.describe())
+c3.dataframe(df_lecturas)
