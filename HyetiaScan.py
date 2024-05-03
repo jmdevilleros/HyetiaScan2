@@ -16,6 +16,7 @@ from mensajes_es import MENSAJES
 import streamlit as st
 import pandas as pd
 from io import BytesIO
+import re
 
 # =============================================================================================
 # Globales
@@ -41,11 +42,19 @@ def inicializar():
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def cargar_archivo_de_cache(archivo_io: BytesIO) -> pd.DataFrame:
+def cargar_archivo_de_cache(archivo_io: BytesIO, decimal: str) -> pd.DataFrame:
     try:
-        df = pd.read_csv(archivo_io)
+        df = pd.read_csv(archivo_io, decimal=decimal)
     except:
         df = None
+    
+    # Intentar deteccion de tipos fecha
+    for col in df.select_dtypes(include='object'): 
+        try:
+            df[col] = pd.to_datetime(df[col])
+        except:
+            pass
+
     return df
 
 # ---------------------------------------------------------------------------------------------
@@ -55,22 +64,31 @@ def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:
 
 # ---------------------------------------------------------------------------------------------
 def obtener_archivo_lecturas() -> pd.DataFrame:
-    archivo = st.sidebar.file_uploader(
-        '', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed'
+    tab_carga, tab_config = st.sidebar.tabs(['Cargar archivo', 'Configurar carga'])
+    with tab_config:
+        decimal = st.radio(
+            'Separador decimal', 
+            options=['.', ','], 
+            captions=['Punto', 'Coma'],
+            horizontal=True,
+        )
+        st.divider()
+    archivo = tab_carga.file_uploader(
+        ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed'
     )
     if archivo is None:
         return None
-    df = cargar_archivo_de_cache(archivo)
+    df = cargar_archivo_de_cache(archivo, decimal=decimal)
     if not verificar_lecturas_cargadas(df):
         st.sidebar.error(MENSAJES['errorlecturas'])
         return None
-    else:
-        return df
+
+    return df
 
 # ---------------------------------------------------------------------------------------------
 def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
-    lista_columnas = list(df.columns)
-    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=None)
+    lista_columnas = df.select_dtypes(include=tipos_validos).columns #list(df.columns)
+    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=0)
     if nombre_col is None:
         return None
     tipo_col = df[nombre_col].dtype
@@ -78,6 +96,16 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
         st.sidebar.error(MENSAJES['errortipocolumna'])
         return None
     return nombre_col
+
+# ---------------------------------------------------------------------------------------------
+def extraer_error_fechahora(mensaje_error):
+    buscar_fechas_fallidas = re.findall(r'\"(.*?)\"', mensaje_error)
+    if len(buscar_fechas_fallidas) > 0:
+        fecha_fallida = buscar_fechas_fallidas[0]
+        position = re.findall(r'position (\d+)', mensaje_error)[0]
+        return fecha_fallida, int(position)
+    else:
+        return mensaje_error, 0
 
 # =============================================================================================
 # Sección principal
@@ -104,9 +132,10 @@ else:
         # TODO: mostrar nombre de archivo
         st.write(MENSAJES['previsualarchivo'])
         st.caption(MENSAJES['shapelecturas'](df_archivo.shape))
+        zona_msg_archivo = st.empty()
         c1, c2, c3 = st.columns([0.2, 0.4, 0.4])
         num_vista = c1.slider(
-            '', min_value=10, max_value=df_archivo.shape[0], value=10, step=100, 
+            ' ', min_value=10, max_value=df_archivo.shape[0], value=10, step=100, 
             label_visibility='collapsed',
         )
         c1.dataframe(
@@ -117,9 +146,30 @@ else:
         c3.dataframe(df_archivo.tail(num_vista)[::-1])  # Mostrar al revés
 
 # ---------------------------------------------------------------------------------------------
+# Detectar si se encontraron columnas de fecha-hora
+if sum(df_archivo.dtypes == 'datetime64[ns]') < 1:
+    st.sidebar.warning('No se detectan columnas de tipo fecha-hora (datetime64[ns])')
+    try:
+        for col in df_archivo.select_dtypes(include='object'): 
+            temp_col = pd.to_datetime(df_archivo[col])
+    except ValueError as ve:
+        val, reg = extraer_error_fechahora(str(ve))    
+        zona_msg_archivo.error(f'Error en registro {reg}: [:orange[{val}]].')    
+    st.stop()
+
+# ---------------------------------------------------------------------------------------------
+# Detectar si se encontraron columnas apropiadas de precipitación
+tipos_numericos = ['int64', 'float64']
+columnas_numericas = df_archivo.select_dtypes(include=tipos_numericos).columns
+
+if len(columnas_numericas) < 1:
+    zona_mensajes.warning('No se detectan columnas de tipo numérico.')
+    st.stop()
+
+# ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
     prompt=MENSAJES['elegircolfechahora'], 
-    tipos_validos=['object', 'datetime64'],
+    tipos_validos=['datetime64[ns]'],
     df=df_archivo
 )
 if (col_fechahora is None):
@@ -129,7 +179,7 @@ if (col_fechahora is None):
 # ---------------------------------------------------------------------------------------------
 col_precipitacion = elegir_nombre_columna(
     prompt=MENSAJES['elegircolprecipitacion'], 
-    tipos_validos=['int64', 'float64'],
+    tipos_validos=tipos_numericos,
     df=df_archivo
 )
 if (col_precipitacion is None):
