@@ -133,17 +133,19 @@ else:
         st.write(MENSAJES['previsualarchivo'])
         st.caption(MENSAJES['shapelecturas'](df_archivo.shape))
         zona_msg_archivo = st.empty()
-        c1, c2, c3 = st.columns([0.2, 0.4, 0.4])
-        num_vista = c1.slider(
-            ' ', min_value=10, max_value=df_archivo.shape[0], value=10, step=100, 
-            label_visibility='collapsed',
-        )
+        c1, c2 = st.columns([0.3, 0.7])
         c1.dataframe(
             df_archivo.dtypes, 
             column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
         )
-        c2.dataframe(df_archivo.head(num_vista))
-        c3.dataframe(df_archivo.tail(num_vista)[::-1])  # Mostrar al revés
+        c1.divider()
+        num_vista = c1.slider(
+            'Cantidad a visualizar', 
+            min_value=10, max_value=df_archivo.shape[0], 
+            value=10, step=100,
+        )
+        c2.dataframe(df_archivo.head(num_vista), use_container_width=True)
+        #c3.dataframe(df_archivo.tail(num_vista)[::-1])  # Mostrar al revés
 
 # ---------------------------------------------------------------------------------------------
 # Detectar si se encontraron columnas de fecha-hora

@@ -41,7 +41,7 @@ MENSAJES = {
     'tablecturas'             : 'Lecturas',
     'tabarchivo'              : 'Archivo',
 
-    'previsualarchivo'        : 'Previsualizar primeros y últimos registros.',
+    'previsualarchivo'        : 'Previsualizar registros.',
     'previsualcolnom'         : 'Columna',
     'previsualtipnom'         : 'Tipo',
 }
