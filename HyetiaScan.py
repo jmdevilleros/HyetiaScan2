@@ -141,6 +141,16 @@ def desplegar_archivo(df: pd.DataFrame):
         column_config={'': MENSAJES['previsualindice']},
     )
 
+# ---------------------------------------------------------------------------------------------
+def desplegar_lecturas(df: pd.DataFrame):
+    c1, c2, c3 = st.columns(3)
+    c1.latex(r'''
+        \sum_{k=0}^{n-1} ar^k =
+        a \left(\frac{1-r^{n}}{1-r}\right)
+        ''')
+    c2.write(df.describe())
+    c3.dataframe(df)
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -187,10 +197,7 @@ if (col_precipitacion is None):
 # ---------------------------------------------------------------------------------------------
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = df_archivo[[col_fechahora, col_precipitacion]].copy()
-c1, c2, c3 = tab_lecturas.columns(3)
-c1.latex(r'''
-    \sum_{k=0}^{n-1} ar^k =
-    a \left(\frac{1-r^{n}}{1-r}\right)
-    ''')
-c2.write(df_lecturas.describe())
-c3.dataframe(df_lecturas)
+
+# ---------------------------------------------------------------------------------------------
+with tab_lecturas:
+    desplegar_lecturas(df_lecturas)
