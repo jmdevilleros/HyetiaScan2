@@ -151,7 +151,7 @@ def desplegar_archivo(df: pd.DataFrame):
     c2.dataframe(
         df.head(num_vista), 
         use_container_width=True,
-        column_config={'': MENSAJES['previsualindice']},
+        column_config={'_index': MENSAJES['previsualindice']},
     )
 
 # ---------------------------------------------------------------------------------------------
