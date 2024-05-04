@@ -128,17 +128,21 @@ def buscar_errores_fechahora(df):
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_archivo(df: pd.DataFrame):
-    # TODO: mostrar nombre de archivo
     st.write(MENSAJES['previsualarchivo'])
     if sum(df.dtypes == 'datetime64[ns]') < 1: 
         buscar_errores_fechahora(df) 
     c1, c2 = st.columns([0.3, 0.7])
-    c1.dataframe(
-        df.dtypes,
-        use_container_width=True,
-        column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
-    )
+
+    # Obtener columnas y sus tipos (df.dtypes genera warnings)
+    tipos_columna = pd.DataFrame({
+        MENSAJES['previsualcolnom']: df.dtypes.index,
+        MENSAJES['previsualtipnom']: df.dtypes.values.astype(str)
+    })
+    c1.dataframe(tipos_columna, hide_index=True, use_container_width=True)
+
     c1.divider()
+
+    # Mostrar cantidad de registros deseados
     num_vista = c1.slider(
         MENSAJES['previsualcantidad'], 
         min_value=10, max_value=df.shape[0], 
