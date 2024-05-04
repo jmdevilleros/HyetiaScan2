@@ -106,6 +106,38 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
         return None
     return nombre_col
 
+# ---------------------------------------------------------------------------------------------
+def desplegar_archivo(df: pd.DataFrame):
+    # TODO: mostrar nombre de archivo
+    st.write(MENSAJES['previsualarchivo'])
+    # -------------------------------------------------------------------------------------
+    # Verificar explícitamente si hay columnas tipo object (strings) 
+    # que no se pueden convertir a tipo fechahora por errores de formato
+    if sum(df.dtypes == 'datetime64[ns]') < 1:
+        try:
+            for col in df.select_dtypes(include='object'): 
+                pd.to_datetime(df[col])
+        except ValueError as ve:
+            valor, indice = extraer_error_fechahora(str(ve))    
+            st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]')   ) 
+    c1, c2 = st.columns([0.3, 0.7])
+    c1.dataframe(
+        df.dtypes,
+        use_container_width=True,
+        column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
+    )
+    c1.divider()
+    num_vista = c1.slider(
+        MENSAJES['previsualcantidad'], 
+        min_value=10, max_value=df.shape[0], 
+        value=10, step=100,
+    )
+    c2.dataframe(
+        df.head(num_vista), 
+        use_container_width=True,
+        column_config={'': MENSAJES['previsualindice']},
+    )
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -126,37 +158,10 @@ df_archivo = obtener_archivo_lecturas()
 if df_archivo is None:
     zona_mensajes.info(MENSAJES['elegirarchivo'])
     st.stop()
-else:
-    with tab_archivo:
-        # TODO: mostrar nombre de archivo
-        st.write(MENSAJES['previsualarchivo'])
-        # -------------------------------------------------------------------------------------
-        # Verificar explícitamente si hay columnas tipo object (strings) 
-        # que no se pueden convertir a tipo fechahora por errores de formato
-        if sum(df_archivo.dtypes == 'datetime64[ns]') < 1:
-            try:
-                for col in df_archivo.select_dtypes(include='object'): 
-                    temp_col = pd.to_datetime(df_archivo[col])
-            except ValueError as ve:
-                valor, indice = extraer_error_fechahora(str(ve))    
-                st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]')   ) 
-        c1, c2 = st.columns([0.3, 0.7])
-        c1.dataframe(
-            df_archivo.dtypes,
-            use_container_width=True,
-            column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
-        )
-        c1.divider()
-        num_vista = c1.slider(
-            MENSAJES['previsualcantidad'], 
-            min_value=10, max_value=df_archivo.shape[0], 
-            value=10, step=100,
-        )
-        c2.dataframe(
-            df_archivo.head(num_vista), 
-            use_container_width=True,
-            column_config={'': MENSAJES['previsualindice']},
-        )
+
+# ---------------------------------------------------------------------------------------------
+with tab_archivo:
+    desplegar_archivo(df_archivo)
 
 # ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
