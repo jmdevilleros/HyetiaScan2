@@ -125,7 +125,7 @@ def buscar_errores_fechahora(df):
 def desplegar_archivo(df: pd.DataFrame):
     st.write(MENSAJES['previsualarchivo'])
 
-    if sum(df.dtypes == 'datetime64[ns]') < 1: 
+    if sum(df.dtypes == 'datetime64') < 1: 
         buscar_errores_fechahora(df) 
 
     c1, c2 = st.columns([0.3, 0.7])
@@ -191,7 +191,7 @@ with tab_archivo:
 # ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
     prompt=MENSAJES['elegircolfechahora'], 
-    tipos_validos=['datetime64[ns]'],
+    tipos_validos=['datetime64'],
     df=df_archivo
 )
 if (col_fechahora is None):
