@@ -42,11 +42,16 @@ def inicializar():
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def cargar_archivo_de_cache(archivo_io: BytesIO, decimal: str) -> pd.DataFrame:
+def cargar_archivo_de_cache(
+    archivo_io: BytesIO, 
+    decimal: str, 
+    codificacion: str='utf-8'
+) -> pd.DataFrame:
     try:
-        df = pd.read_csv(archivo_io, decimal=decimal)
-    except:
-        df = None
+        df = pd.read_csv(archivo_io, decimal=decimal, encoding=codificacion)
+    except Exception as ex:
+        st.sidebar.error(ex)
+        return None
     
     # Intentar deteccion de tipos fecha
     for col in df.select_dtypes(include='object'): 
@@ -72,13 +77,17 @@ def obtener_archivo_lecturas() -> pd.DataFrame:
             captions=['Punto', 'Coma'],
             horizontal=True,
         )
+        codificacion = st.selectbox(
+            'Codificación',
+            options=['utf-8', 'utf-16', 'utf-32', 'latin-1', 'iso-8859-1', 'ascii'],
+        )
         st.divider()
     archivo = tab_carga.file_uploader(
-        ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed'
+        ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed',
     )
     if archivo is None:
         return None
-    df = cargar_archivo_de_cache(archivo, decimal=decimal)
+    df = cargar_archivo_de_cache(archivo, decimal=decimal, codificacion=codificacion)
     if not verificar_lecturas_cargadas(df):
         st.sidebar.error(MENSAJES['errorlecturas'])
         return None
