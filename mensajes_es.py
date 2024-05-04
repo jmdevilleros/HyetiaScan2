@@ -29,13 +29,11 @@ MENSAJES = {
     'stcachespinner'          : 'Cargando...',
 
     'errorlecturas'           : 'Error en archivo seleccionado.',
+    'errorfechahora'          : lambda i, v: f'Error de fecha-hora en índice {i}: [{v}].',
+    'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
     'elegirarchivo'           : 'Seleccione archivo de lecturas.',
-    'shapelecturas'           : lambda s: f'Cargados {s[0]} registros, {s[1]} columnas.',
-
     'elegircolfechahora'      : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion'  : 'Seleccione columna de precipitación.',
-    'elegircolsdiferentes'    : 'No puede seleccionar la misma columna.',
-    'errortipocolumna'        : 'Error en tipo de columna',
     'columnasok'              : 'Columnas seleccionadas.',
 
     'tablecturas'             : 'Lecturas',
@@ -44,4 +42,6 @@ MENSAJES = {
     'previsualarchivo'        : 'Previsualizar registros.',
     'previsualcolnom'         : 'Columna',
     'previsualtipnom'         : 'Tipo',
+    'previsualcantidad'       : 'Cantidad a visualizar',
+    'previsualindice'         : 'Índice',
 }

@@ -86,18 +86,6 @@ def obtener_archivo_lecturas() -> pd.DataFrame:
     return df
 
 # ---------------------------------------------------------------------------------------------
-def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
-    lista_columnas = df.select_dtypes(include=tipos_validos).columns #list(df.columns)
-    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=0)
-    if nombre_col is None:
-        return None
-    tipo_col = df[nombre_col].dtype
-    if tipo_col not in tipos_validos:
-        st.sidebar.error(MENSAJES['errortipocolumna'])
-        return None
-    return nombre_col
-
-# ---------------------------------------------------------------------------------------------
 def extraer_error_fechahora(mensaje_error):
     buscar_fechas_fallidas = re.findall(r'\"(.*?)\"', mensaje_error)
     if len(buscar_fechas_fallidas) > 0:
@@ -106,6 +94,17 @@ def extraer_error_fechahora(mensaje_error):
         return fecha_fallida, int(position)
     else:
         return mensaje_error, 0
+
+# ---------------------------------------------------------------------------------------------
+def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
+    lista_columnas = df.select_dtypes(include=tipos_validos).columns
+    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=None)
+    if len(lista_columnas) < 1:
+        st.sidebar.warning(MENSAJES['errortipocols'](tipos_validos))
+        return None
+    if nombre_col is None:
+        return None
+    return nombre_col
 
 # =============================================================================================
 # Sección principal
@@ -131,42 +130,33 @@ else:
     with tab_archivo:
         # TODO: mostrar nombre de archivo
         st.write(MENSAJES['previsualarchivo'])
-        st.caption(MENSAJES['shapelecturas'](df_archivo.shape))
-        zona_msg_archivo = st.empty()
+        # -------------------------------------------------------------------------------------
+        # Verificar explícitamente si hay columnas tipo object (strings) 
+        # que no se pueden convertir a tipo fechahora por errores de formato
+        if sum(df_archivo.dtypes == 'datetime64[ns]') < 1:
+            try:
+                for col in df_archivo.select_dtypes(include='object'): 
+                    temp_col = pd.to_datetime(df_archivo[col])
+            except ValueError as ve:
+                valor, indice = extraer_error_fechahora(str(ve))    
+                st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]')   ) 
         c1, c2 = st.columns([0.3, 0.7])
         c1.dataframe(
-            df_archivo.dtypes, 
+            df_archivo.dtypes,
+            use_container_width=True,
             column_config={'': MENSAJES['previsualcolnom'], '0': MENSAJES['previsualtipnom']}
         )
         c1.divider()
         num_vista = c1.slider(
-            'Cantidad a visualizar', 
+            MENSAJES['previsualcantidad'], 
             min_value=10, max_value=df_archivo.shape[0], 
             value=10, step=100,
         )
-        c2.dataframe(df_archivo.head(num_vista), use_container_width=True)
-        #c3.dataframe(df_archivo.tail(num_vista)[::-1])  # Mostrar al revés
-
-# ---------------------------------------------------------------------------------------------
-# Detectar si se encontraron columnas de fecha-hora
-if sum(df_archivo.dtypes == 'datetime64[ns]') < 1:
-    st.sidebar.warning('No se detectan columnas de tipo fecha-hora (datetime64[ns])')
-    try:
-        for col in df_archivo.select_dtypes(include='object'): 
-            temp_col = pd.to_datetime(df_archivo[col])
-    except ValueError as ve:
-        val, reg = extraer_error_fechahora(str(ve))    
-        zona_msg_archivo.error(f'Error en registro {reg}: [:orange[{val}]].')    
-    st.stop()
-
-# ---------------------------------------------------------------------------------------------
-# Detectar si se encontraron columnas apropiadas de precipitación
-tipos_numericos = ['int64', 'float64']
-columnas_numericas = df_archivo.select_dtypes(include=tipos_numericos).columns
-
-if len(columnas_numericas) < 1:
-    zona_mensajes.warning('No se detectan columnas de tipo numérico.')
-    st.stop()
+        c2.dataframe(
+            df_archivo.head(num_vista), 
+            use_container_width=True,
+            column_config={'': MENSAJES['previsualindice']},
+        )
 
 # ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
@@ -181,7 +171,7 @@ if (col_fechahora is None):
 # ---------------------------------------------------------------------------------------------
 col_precipitacion = elegir_nombre_columna(
     prompt=MENSAJES['elegircolprecipitacion'], 
-    tipos_validos=tipos_numericos,
+    tipos_validos=['int64', 'float64'],
     df=df_archivo
 )
 if (col_precipitacion is None):
@@ -189,22 +179,9 @@ if (col_precipitacion is None):
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-if (col_fechahora == col_precipitacion):
-    st.sidebar.error(MENSAJES['elegircolsdiferentes'])
-    st.stop()
-
-# ---------------------------------------------------------------------------------------------
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = df_archivo[[col_fechahora, col_precipitacion]].copy()
 c1, c2, c3 = tab_lecturas.columns(3)
-c1.latex(r'''
-    \sum_{k=0}^{n-1} ar^k =
-    a \left(\frac{1-r^{n}}{1-r}\right)
-    ''')
-c1.latex(r'''
-    \sum_{k=0}^{n-1} ar^k =
-    a \left(\frac{1-r^{n}}{1-r}\right)
-    ''')
 c1.latex(r'''
     \sum_{k=0}^{n-1} ar^k =
     a \left(\frac{1-r^{n}}{1-r}\right)
