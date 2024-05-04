@@ -43,17 +43,17 @@ def inicializar():
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
 def cargar_archivo_de_cache(archivo: BytesIO, decimal: str, codificacion: str) -> pd.DataFrame:
-
     try:
         df = pd.read_csv(
-            archivo, decimal=decimal, encoding=codificacion, 
-            parse_dates=True, infer_datetime_format=True,
-            engine='pyarrow'
+            archivo, 
+            decimal=decimal, 
+            encoding=codificacion, 
+            parse_dates=True, 
+            engine='pyarrow',
         )
     except Exception as ex:
         st.sidebar.error(ex)
         return None
-
     return df
 
 # ---------------------------------------------------------------------------------------------
@@ -76,11 +76,13 @@ def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
             options=['utf-8', 'utf-16', 'utf-32', 'latin-1', 'iso-8859-1', 'ascii'],
         )
         st.divider()
+
     archivo = tab_carga.file_uploader(
         ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed',
     )
     if archivo is None:
         return None, None
+    
     df = cargar_archivo_de_cache(archivo, decimal=decimal, codificacion=codificacion)
     if not verificar_lecturas_cargadas(df):
         st.sidebar.error(MENSAJES['errorlecturas'])
@@ -104,27 +106,28 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
 # que no se pueden convertir a tipo fechahora por errores de formato
 def buscar_errores_fechahora(df):
     # -----------------------------------------------------------------------------------------
-    def extraer_error_fechahora(mensaje_error):
-        buscar_fechas_fallidas = re.findall(r'\"(.*?)\"', mensaje_error)
-        if len(buscar_fechas_fallidas) > 0:
-            fecha_fallida = buscar_fechas_fallidas[0]
-            position = re.findall(r'position (\d+)', mensaje_error)[0]
-            return fecha_fallida, int(position)
-        else:
-            return mensaje_error, 0
-    # -----------------------------------------------------------------------------------------
     try:
         for col in df.select_dtypes(include='object'): 
             pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
-    except ValueError as ve:
-        valor, indice = extraer_error_fechahora(str(ve))    
-        st.error(MENSAJES['errorfechahora'](col, indice, f':orange[{valor}]'))
+    except ValueError as ex:
+        mensaje_error = str(ex)
+        patron_fechahora = r'time data \"(.*?)\"'
+        patron_posicion = r'at position (\d+)'
+
+        coincidencia_fechahora = re.search(patron_fechahora, mensaje_error)
+        coincidencia_posicion = re.search(patron_posicion, mensaje_error)
+
+        valor_fechahora = coincidencia_fechahora.group(1) if coincidencia_fechahora else None
+        indice = int(coincidencia_posicion.group(1)) if coincidencia_posicion else None
+        st.error(MENSAJES['errorfechahora'](col, indice, f':orange[{valor_fechahora}]'))
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_archivo(df: pd.DataFrame):
     st.write(MENSAJES['previsualarchivo'])
+
     if sum(df.dtypes == 'datetime64[ns]') < 1: 
         buscar_errores_fechahora(df) 
+
     c1, c2 = st.columns([0.3, 0.7])
 
     # Obtener columnas y sus tipos (df.dtypes genera warnings)
