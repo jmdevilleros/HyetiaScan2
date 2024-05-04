@@ -42,23 +42,17 @@ def inicializar():
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def cargar_archivo_de_cache(
-    archivo_io: BytesIO, 
-    decimal: str, 
-    codificacion: str='utf-8'
-) -> pd.DataFrame:
+def cargar_archivo_de_cache(archivo: BytesIO, decimal: str, codificacion: str) -> pd.DataFrame:
+
     try:
-        df = pd.read_csv(archivo_io, decimal=decimal, encoding=codificacion)
+        df = pd.read_csv(
+            archivo, decimal=decimal, encoding=codificacion, 
+            parse_dates=True, infer_datetime_format=True,
+            engine='pyarrow'
+        )
     except Exception as ex:
         st.sidebar.error(ex)
         return None
-    
-    # Intentar deteccion de tipos fecha
-    for col in df.select_dtypes(include='object'): 
-        try:
-            df[col] = pd.to_datetime(df[col])
-        except:
-            pass
 
     return df
 
@@ -121,10 +115,10 @@ def buscar_errores_fechahora(df):
     # -----------------------------------------------------------------------------------------
     try:
         for col in df.select_dtypes(include='object'): 
-            pd.to_datetime(df[col])
+            pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
     except ValueError as ve:
         valor, indice = extraer_error_fechahora(str(ve))    
-        st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]'))
+        st.error(MENSAJES['errorfechahora'](col, indice, f':orange[{valor}]'))
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_archivo(df: pd.DataFrame):

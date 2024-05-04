@@ -29,7 +29,7 @@ MENSAJES = {
     'stcachespinner'          : 'Cargando...',
 
     'errorlecturas'           : 'Error en archivo seleccionado.',
-    'errorfechahora'          : lambda i, v: f'Error de fecha-hora en índice {i}: [{v}].',
+    'errorfechahora'          : lambda c, i, v: f'Error de formato en columna "{c}", índice {i}: [{v}]',
     'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
     
     'elegirarchivo'           : 'Seleccione archivo de lecturas.',
