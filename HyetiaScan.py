@@ -86,16 +86,6 @@ def obtener_archivo_lecturas() -> pd.DataFrame:
     return df
 
 # ---------------------------------------------------------------------------------------------
-def extraer_error_fechahora(mensaje_error):
-    buscar_fechas_fallidas = re.findall(r'\"(.*?)\"', mensaje_error)
-    if len(buscar_fechas_fallidas) > 0:
-        fecha_fallida = buscar_fechas_fallidas[0]
-        position = re.findall(r'position (\d+)', mensaje_error)[0]
-        return fecha_fallida, int(position)
-    else:
-        return mensaje_error, 0
-
-# ---------------------------------------------------------------------------------------------
 def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
     lista_columnas = df.select_dtypes(include=tipos_validos).columns
     nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=None)
@@ -107,19 +97,32 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
     return nombre_col
 
 # ---------------------------------------------------------------------------------------------
+# Verificar explícitamente si hay columnas tipo object (strings) 
+# que no se pueden convertir a tipo fechahora por errores de formato
+def buscar_errores_fechahora(df):
+    # -----------------------------------------------------------------------------------------
+    def extraer_error_fechahora(mensaje_error):
+        buscar_fechas_fallidas = re.findall(r'\"(.*?)\"', mensaje_error)
+        if len(buscar_fechas_fallidas) > 0:
+            fecha_fallida = buscar_fechas_fallidas[0]
+            position = re.findall(r'position (\d+)', mensaje_error)[0]
+            return fecha_fallida, int(position)
+        else:
+            return mensaje_error, 0
+    # -----------------------------------------------------------------------------------------
+    try:
+        for col in df.select_dtypes(include='object'): 
+            pd.to_datetime(df[col])
+    except ValueError as ve:
+        valor, indice = extraer_error_fechahora(str(ve))    
+        st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]'))
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_archivo(df: pd.DataFrame):
     # TODO: mostrar nombre de archivo
     st.write(MENSAJES['previsualarchivo'])
-    # -------------------------------------------------------------------------------------
-    # Verificar explícitamente si hay columnas tipo object (strings) 
-    # que no se pueden convertir a tipo fechahora por errores de formato
-    if sum(df.dtypes == 'datetime64[ns]') < 1:
-        try:
-            for col in df.select_dtypes(include='object'): 
-                pd.to_datetime(df[col])
-        except ValueError as ve:
-            valor, indice = extraer_error_fechahora(str(ve))    
-            st.error(MENSAJES['errorfechahora'](indice, f':orange[{valor}]')   ) 
+    if sum(df.dtypes == 'datetime64[ns]') < 1: 
+        buscar_errores_fechahora(df) 
     c1, c2 = st.columns([0.3, 0.7])
     c1.dataframe(
         df.dtypes,
@@ -158,8 +161,6 @@ df_archivo = obtener_archivo_lecturas()
 if df_archivo is None:
     zona_mensajes.info(MENSAJES['elegirarchivo'])
     st.stop()
-
-# ---------------------------------------------------------------------------------------------
 with tab_archivo:
     desplegar_archivo(df_archivo)
 
