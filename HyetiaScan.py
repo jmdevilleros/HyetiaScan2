@@ -69,7 +69,7 @@ def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:
 
 # ---------------------------------------------------------------------------------------------
 def obtener_archivo_lecturas() -> pd.DataFrame:
-    tab_carga, tab_config = st.sidebar.tabs(['Cargar archivo', 'Configurar carga'])
+    tab_carga, tab_config = st.sidebar.tabs([MENSAJES['tabcarga'], MENSAJES['tabconfig']])
     with tab_config:
         decimal = st.radio(
             'Separador decimal', 

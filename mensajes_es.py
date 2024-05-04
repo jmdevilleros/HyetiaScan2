@@ -31,11 +31,14 @@ MENSAJES = {
     'errorlecturas'           : 'Error en archivo seleccionado.',
     'errorfechahora'          : lambda i, v: f'Error de fecha-hora en índice {i}: [{v}].',
     'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
+    
     'elegirarchivo'           : 'Seleccione archivo de lecturas.',
     'elegircolfechahora'      : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion'  : 'Seleccione columna de precipitación.',
     'columnasok'              : 'Columnas seleccionadas.',
 
+    'tabcarga'                : 'Cargar archivo',
+    'tabconfig'               : 'Configurar carga',
     'tablecturas'             : 'Lecturas',
     'tabarchivo'              : 'Archivo',
 
