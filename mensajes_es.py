@@ -32,6 +32,8 @@ MENSAJES = {
     'errorfechahora'          : lambda c, i, v: f'Error de formato en columna "{c}", índice {i}: [{v}]',
     'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
     
+    'elegirdecimal'           : 'Separador decimal',
+    'elegircodificacion'      : 'Codificación',
     'elegirarchivo'           : 'Seleccione archivo de lecturas.',
     'elegircolfechahora'      : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion'  : 'Seleccione columna de precipitación.',

@@ -66,13 +66,13 @@ def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
     tab_carga, tab_config = st.sidebar.tabs([MENSAJES['tabcarga'], MENSAJES['tabconfig']])
     with tab_config:
         decimal = st.radio(
-            'Separador decimal', 
+            MENSAJES['elegirdecimal'], 
             options=['.', ','], 
             captions=['Punto', 'Coma'],
             horizontal=True,
         )
         codificacion = st.selectbox(
-            'Codificación',
+            MENSAJES['elegircodificacion'],
             options=['utf-8', 'utf-16', 'utf-32', 'latin-1', 'iso-8859-1', 'ascii'],
         )
         st.divider()
@@ -105,7 +105,6 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
 # Verificar explícitamente si hay columnas tipo object (strings) 
 # que no se pueden convertir a tipo fechahora por errores de formato
 def buscar_errores_fechahora(df):
-    # -----------------------------------------------------------------------------------------
     try:
         for col in df.select_dtypes(include='object'): 
             pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
@@ -158,8 +157,13 @@ def desplegar_lecturas(df: pd.DataFrame):
         \sum_{k=0}^{n-1} ar^k =
         a \left(\frac{1-r^{n}}{1-r}\right)
         ''')
-    c2.write(df.describe())
+    c2.write('stats')
     c3.dataframe(df)
+
+# ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
+    return df[[col1, col2]].copy()
 
 # =============================================================================================
 # Sección principal
@@ -172,10 +176,8 @@ zona_mensajes = st.empty()
 lista_tabs = [
     MENSAJES['tabarchivo'],
     MENSAJES['tablecturas'],
-    'Eventos',
-    'Gráficas',
 ]
-tab_archivo, tab_lecturas, tab_eventos, tab_graficas = st.tabs(lista_tabs)
+tab_archivo, tab_lecturas = st.tabs(lista_tabs)
 
 # ---------------------------------------------------------------------------------------------
 df_archivo, nombre_archivo = obtener_archivo_lecturas()
@@ -209,9 +211,8 @@ if (col_precipitacion is None):
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-st.sidebar.success(MENSAJES['columnasok'])
-df_lecturas = df_archivo[[col_fechahora, col_precipitacion]].copy()
 
-# ---------------------------------------------------------------------------------------------
+st.sidebar.success(MENSAJES['columnasok'])
+df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 with tab_lecturas:
     desplegar_lecturas(df_lecturas)
