@@ -68,7 +68,7 @@ def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:
     return (df is not None) and (df.shape[1] >= 2) and (df.shape[0] >= 2)
 
 # ---------------------------------------------------------------------------------------------
-def obtener_archivo_lecturas() -> pd.DataFrame:
+def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
     tab_carga, tab_config = st.sidebar.tabs([MENSAJES['tabcarga'], MENSAJES['tabconfig']])
     with tab_config:
         decimal = st.radio(
@@ -86,13 +86,13 @@ def obtener_archivo_lecturas() -> pd.DataFrame:
         ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed',
     )
     if archivo is None:
-        return None
+        return None, None
     df = cargar_archivo_de_cache(archivo, decimal=decimal, codificacion=codificacion)
     if not verificar_lecturas_cargadas(df):
         st.sidebar.error(MENSAJES['errorlecturas'])
-        return None
+        return None, None
 
-    return df
+    return df, archivo.name
 
 # ---------------------------------------------------------------------------------------------
 def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
@@ -166,6 +166,7 @@ def desplegar_lecturas(df: pd.DataFrame):
 
 inicializar()
 
+zona_descripcion = st.empty()
 zona_mensajes = st.empty()
 lista_tabs = [
     MENSAJES['tabarchivo'],
@@ -176,10 +177,13 @@ lista_tabs = [
 tab_archivo, tab_lecturas, tab_eventos, tab_graficas = st.tabs(lista_tabs)
 
 # ---------------------------------------------------------------------------------------------
-df_archivo = obtener_archivo_lecturas()
+df_archivo, nombre_archivo = obtener_archivo_lecturas()
 if df_archivo is None:
     zona_mensajes.info(MENSAJES['elegirarchivo'])
     st.stop()
+
+# ---------------------------------------------------------------------------------------------
+zona_descripcion.subheader(nombre_archivo)
 with tab_archivo:
     desplegar_archivo(df_archivo)
 
