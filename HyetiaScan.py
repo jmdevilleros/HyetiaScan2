@@ -151,19 +151,19 @@ def desplegar_archivo(df: pd.DataFrame):
     )
 
 # ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
+    return df[[col1, col2]].copy()
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df: pd.DataFrame):
     c1, c2, c3 = st.columns(3)
     c1.latex(r'''
         \sum_{k=0}^{n-1} ar^k =
         a \left(\frac{1-r^{n}}{1-r}\right)
         ''')
-    c2.write('stats')
+    c2.write(df.describe(include='all'))
     c3.dataframe(df)
-
-# ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
-    return df[[col1, col2]].copy()
 
 # =============================================================================================
 # Sección principal
@@ -194,7 +194,7 @@ with tab_archivo:
 col_fechahora = elegir_nombre_columna(
     prompt=MENSAJES['elegircolfechahora'], 
     tipos_validos=['datetime64'],
-    df=df_archivo
+    df=df_archivo,
 )
 if (col_fechahora is None):
     zona_mensajes.info(MENSAJES['elegircolfechahora'])
