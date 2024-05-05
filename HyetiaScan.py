@@ -171,35 +171,91 @@ def estimar_intervalo_lecturas(df: pd.DataFrame) -> float:
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def agrupar_lecturas(df, frecuencia):
+def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     funcion_agregacion = {col_precipitacion: 'sum'}  
-    return df.groupby(agrupacion).agg(funcion_agregacion)
+    return df.groupby(agrupacion).agg(funcion_agregacion).reset_index()
     
 # ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df: pd.DataFrame):
-    c1, c2 = st.columns([0.25, 0.75])
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
 
+    zona_stats = st.container(border=False)
+    zona_visual = st.container(border=True)
+    zona_params, zona_grafico = zona_visual.columns([0.3, 0.7])
+    zona_tablas = st.container(border=True)
+    zona_lecturas, zona_agrupadas = zona_tablas.columns(2)
+
+
+    # Estadísticas ----------------------------------------------------------------------------
     intervalo = estimar_intervalo_lecturas(df)
-    c1.write(f'Intervalo {intervalo} minutos.')
+    num_totales = df.shape[0]
+    num_correctas = df[df[col_precipitacion] >= 0].shape[0]
 
-    frecuencia_acumulacion = c1.select_slider(
-        'Frecuencia de acumulación', options=['h', 'D', 'W', 'ME', 'YE']  , value='ME'
+    stats = {'Estadística' : [], 'Valor' : []} 
+
+    stats['Estadística'].append('Intervalo')
+    stats['Valor'].append(f'{intervalo} minutos')
+
+    stats['Estadística'].append('Lecturas totales')
+    stats['Valor'].append(f'{num_totales}')
+
+    stats['Estadística'].append('Lecturas correctas (P<=0)')
+    stats['Valor'].append(f'{num_correctas} ({num_correctas / num_totales :.2%})')
+
+    df_stats = pd.DataFrame(stats)
+    zona_stats.dataframe(df_stats, hide_index=True, width=400)
+
+    # Visualización ---------------------------------------------------------------------------
+    agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Semana' : 'W', 'Mes' : 'ME', 'Año' : 'YE'}
+    criterio = zona_params.select_slider(
+        'Criterio de agrupación', 
+        options=list(agrupaciones.keys()),
+        value='Dia',
     )
-    identificar_errores = c1.checkbox('Identificar errores')
-    identificar_duplicados = c1.checkbox('Identificar duplicados')
+    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
+    zona_grafico.scatter_chart(
+        data=df_agrupado, x=col_fechahora, y=col_precipitacion, size=30,
+    )
 
-    c2.line_chart(agrupar_lecturas(df, frecuencia_acumulacion))
+    # Tablas ----------------------------------------------------------------------------------
+    zona_lecturas.subheader('Lecturas individuales')
+    num_lecturas = zona_lecturas.slider(
+        MENSAJES['previsualcantidad'], key='num_enlecturas',
+        min_value=10, max_value=df.shape[0], value=10, step=10,
+    )
+    zona_lecturas.dataframe(
+        df.head(num_lecturas), hide_index=True, use_container_width=True,
+    )
 
-    c1.divider()
-    if c1.toggle('Visualizar lecturas?'):
-        num_vista = c1.slider(
-            MENSAJES['previsualcantidad'], key='num_enlecturas',
-            min_value=10, max_value=df.shape[0], value=10, step=100,
-        )
-        c1.dataframe(df.head(num_vista), hide_index=True, use_container_width=True)
+    zona_agrupadas.subheader(f'Lecturas agrupadas ({criterio})')
+    num_agrupadas = zona_agrupadas.slider(
+        MENSAJES['previsualcantidad'], key='num_enagrupadas',
+        min_value=10, max_value=df_agrupado.shape[0], value=10, step=10,
+    )
+    zona_agrupadas.dataframe(
+        df_agrupado.head(num_agrupadas), hide_index=True, use_container_width=True,
+    )
+
+
+    return
+
+    reemplazar_incorrectas = zona_params.checkbox('Asumir CERO en lecturas incorrectas')
+    if reemplazar_incorrectas: 
+        # TODO: ofrecer con selectbox varias opciones de relleno (0, -1, minimo, maximo, promedio...)
+        df.loc[df[col_precipitacion] == -1, col_precipitacion] = 0 # Cambiar lecturas no válidas a 0
+
+    # -----------------------------------------------------------------------------------------
+    # todo: revisar si hay que calcular con acumulado o full. creo que acum
+    # todo: o revisar si solo se usa el acum para la graficaque ya estoy dormido
+
+
+
+    # Cambiar lecturas no válidas a -1
+    df_acumulado.loc[df_acumulado[col_precipitacion] < 0, col_precipitacion] = -1 
 
 # =============================================================================================
 # Sección principal
@@ -247,7 +303,6 @@ if (col_precipitacion is None):
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 with tab_lecturas:
