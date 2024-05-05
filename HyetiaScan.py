@@ -143,6 +143,7 @@ def desplegar_archivo(df: pd.DataFrame):
         MENSAJES['previsualcantidad'], 
         min_value=10, max_value=df.shape[0], 
         value=10, step=100,
+        key='num_enarchivo',
     )
     c2.dataframe(
         df.head(num_vista), 
@@ -156,14 +157,49 @@ def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     return df[[col1, col2]].copy()
 
 # ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def estimar_intervalo_lecturas(df: pd.DataFrame) -> float:
+    # Calcular intervalo con la moda de los delta_t entre los primeros registros
+    try:
+        col_t = df.columns[0]
+        s_delta_t = pd.to_timedelta(df[col_t].head(1000).diff().fillna(0))
+        moda_dt = s_delta_t.mode()[0]
+        intervalo = moda_dt.total_seconds() / 60
+    except:
+        intervalo = 0
+    return intervalo
+
+# ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def agrupar_lecturas(df, frecuencia):
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
+    agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
+    funcion_agregacion = {col_precipitacion: 'sum'}  
+    return df.groupby(agrupacion).agg(funcion_agregacion)
+    
+# ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df: pd.DataFrame):
-    c1, c2, c3 = st.columns(3)
-    c1.latex(r'''
-        \sum_{k=0}^{n-1} ar^k =
-        a \left(\frac{1-r^{n}}{1-r}\right)
-        ''')
-    c2.write(df.describe(include='all'))
-    c3.dataframe(df)
+    c1, c2 = st.columns([0.25, 0.75])
+
+    intervalo = estimar_intervalo_lecturas(df)
+    c1.write(f'Intervalo {intervalo} minutos.')
+
+    frecuencia_acumulacion = c1.select_slider(
+        'Frecuencia de acumulación', options=['h', 'D', 'W', 'ME', 'YE']  , value='ME'
+    )
+    identificar_errores = c1.checkbox('Identificar errores')
+    identificar_duplicados = c1.checkbox('Identificar duplicados')
+
+    c2.line_chart(agrupar_lecturas(df, frecuencia_acumulacion))
+
+    c1.divider()
+    if c1.toggle('Visualizar lecturas?'):
+        num_vista = c1.slider(
+            MENSAJES['previsualcantidad'], key='num_enlecturas',
+            min_value=10, max_value=df.shape[0], value=10, step=100,
+        )
+        c1.dataframe(df.head(num_vista), hide_index=True, use_container_width=True)
 
 # =============================================================================================
 # Sección principal
