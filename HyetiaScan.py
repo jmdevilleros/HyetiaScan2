@@ -204,7 +204,8 @@ def desplegar_lecturas(df: pd.DataFrame):
     df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
 
     # Gráficos---------------------------------------------------------------------------------
-    zona_stats, zona_chart = st.columns(2)
+    zona_stats, zona_chart = st.columns(2, gap='large')
+
     with zona_chart.container(border=True):
         st.subheader(f'Lecturas agrupadas ({criterio})')
         st.bar_chart(df_agrupado, x=col_fechahora, y='acumulado', use_container_width=True)
