@@ -195,10 +195,10 @@ def desplegar_lecturas(df: pd.DataFrame):
     # -----------------------------------------------------------------------------------------
     zona_criterio, _ = st.columns(2)
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    criterio = zona_criterio.select_slider(
+    criterio = zona_criterio.radio(
         'Criterio de agrupación', 
         options=list(agrupaciones.keys()),
-        value='Mes', 
+        index=1, horizontal=True
     )
 
     df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
