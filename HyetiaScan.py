@@ -15,6 +15,7 @@
 from mensajes_es import MENSAJES
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 from io import BytesIO
 import re
 
@@ -93,7 +94,7 @@ def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
 # ---------------------------------------------------------------------------------------------
 def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFrame) -> str:
     lista_columnas = df.select_dtypes(include=tipos_validos).columns
-    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=None)
+    nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=0)
     if len(lista_columnas) < 1:
         st.sidebar.warning(MENSAJES['errortipocols'](tipos_validos))
         return None
@@ -177,15 +178,96 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     funcion_agregacion = {col_precipitacion: 'sum'}  
     return df.groupby(agrupacion).agg(funcion_agregacion).reset_index()
+
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def agrupar_lecturas2(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
+    agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     
+    df_aux = df.groupby(agrupacion)[col_precipitacion].agg(
+        positivos = lambda x: (x >= 0).sum(),
+        negativos = lambda x: (x < 0).sum(),
+        acumulado = 'sum'
+    )
+    df_aux['duplicados'] = df.groupby(agrupacion)[col_fechahora].apply(lambda x: x.duplicated().sum())
+    
+    return df_aux.reset_index()
+
 # ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df: pd.DataFrame):
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
 
+    precipitaciones = df[col_precipitacion]
+    num_totales     = df.shape[0]
+    num_correctas   = precipitaciones[precipitaciones >= 0].count()
+    num_incorrectas = precipitaciones[precipitaciones < 0].count()
+    
+    # -----------------------------------------------------------------------------------------
+    zona_criterio, _ = st.columns(2)
+    agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Semana' : 'W', 'Mes' : 'ME', 'Año' : 'YE'}
+    criterio = zona_criterio.select_slider(
+        'Criterio de agrupación', 
+        options=list(agrupaciones.keys()),
+        value='Dia', 
+    )
+
+    df_agrupado = agrupar_lecturas2(df, agrupaciones[criterio])
+
+    # -----------------------------------------------------------------------------------------
+    zona_stats, zona_chart = st.columns(2)
+    with zona_chart.container(border=True):
+        st.subheader(f'Lecturas agrupadas ({criterio})')
+        st.bar_chart(data=df_agrupado, x=col_fechahora, y='acumulado', use_container_width=True)
+    with zona_stats.container(border=True):
+        st.subheader(f'Categorías de lecturas')
+        st.bar_chart(df_agrupado, x=col_fechahora, y=['positivos', 'negativos', 'duplicados'])
+
+        # resultados = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(contar_tipos_lecturas)
+        # st.dataframe(resultados, use_container_width=True)
+
+        # df_aux = pd.DataFrame()
+        # df_aux['positivos'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(lambda x: (x >= 0).sum())
+        # df_aux['negativos'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(lambda x: (x < 0).sum())
+        # df_aux['duplicados'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_fechahora].apply(lambda x: x.duplicated().sum())
+        # st.dataframe(df_aux, use_container_width=True)
+
+        # df_aux = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].agg(
+        #     positivos = lambda x: (x >= 0).sum(),
+        #     negativos = lambda x: (x < 0).sum()
+        # )
+        # df_aux['duplicados'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_fechahora].apply(lambda x: x.duplicated().sum())
+
+        # st.dataframe(df_aux, use_container_width=True)
+
+
+    # Tablas ----------------------------------------------------------------------------------
+    zona_lecturas, zona_agrupadas = st.columns(2, gap='large')
+    zona_lecturas.subheader('Detalle lecturas individuales')
+    num_lecturas = zona_lecturas.slider(
+        MENSAJES['previsualcantidad'], key='num_enlecturas',
+        min_value=10, max_value=df.shape[0], value=10, step=10,
+    )
+    zona_lecturas.dataframe(
+        df.head(num_lecturas), hide_index=True, use_container_width=True,
+    )
+
+    zona_agrupadas.subheader(f'Detalle lecturas agrupadas ({criterio})')
+    num_agrupadas = zona_agrupadas.slider(
+        MENSAJES['previsualcantidad'], key='num_enagrupadas',
+        min_value=0, max_value=df_agrupado.shape[0], value=10, step=10,
+    )
+    zona_agrupadas.dataframe(
+        df_agrupado.head(num_agrupadas), hide_index=True, use_container_width=True,
+    )
+
+    return
+
+
     zona_stats = st.container(border=False)
     zona_visual = st.container(border=True)
-    zona_params, zona_grafico = zona_visual.columns([0.3, 0.7])
+    zona_params, zona_agrupado = zona_visual.columns([0.3, 0.7])
     zona_tablas = st.container(border=True)
     zona_lecturas, zona_agrupadas = zona_tablas.columns(2)
 
@@ -217,28 +299,10 @@ def desplegar_lecturas(df: pd.DataFrame):
         value='Dia',
     )
     df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
-    zona_grafico.scatter_chart(
+    zona_agrupado.scatter_chart(
         data=df_agrupado, x=col_fechahora, y=col_precipitacion, size=30,
     )
 
-    # Tablas ----------------------------------------------------------------------------------
-    zona_lecturas.subheader('Lecturas individuales')
-    num_lecturas = zona_lecturas.slider(
-        MENSAJES['previsualcantidad'], key='num_enlecturas',
-        min_value=10, max_value=df.shape[0], value=10, step=10,
-    )
-    zona_lecturas.dataframe(
-        df.head(num_lecturas), hide_index=True, use_container_width=True,
-    )
-
-    zona_agrupadas.subheader(f'Lecturas agrupadas ({criterio})')
-    num_agrupadas = zona_agrupadas.slider(
-        MENSAJES['previsualcantidad'], key='num_enagrupadas',
-        min_value=10, max_value=df_agrupado.shape[0], value=10, step=10,
-    )
-    zona_agrupadas.dataframe(
-        df_agrupado.head(num_agrupadas), hide_index=True, use_container_width=True,
-    )
 
 
     return
