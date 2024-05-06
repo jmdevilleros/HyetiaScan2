@@ -176,21 +176,14 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
-    funcion_agregacion = {col_precipitacion: 'sum'}  
-    return df.groupby(agrupacion).agg(funcion_agregacion).reset_index()
-
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def agrupar_lecturas2(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
-    col_fechahora = df.columns[0]
-    col_precipitacion = df.columns[1]
-    agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     
     df_aux = df.groupby(agrupacion)[col_precipitacion].agg(
         positivos = lambda x: (x >= 0).sum(),
         negativos = lambda x: (x < 0).sum(),
         acumulado = 'sum'
     )
-    df_aux['duplicados'] = df.groupby(agrupacion)[col_fechahora].apply(lambda x: x.duplicated().sum())
+    df_aux['duplicados'] \
+        = df.groupby(agrupacion)[col_fechahora].apply(lambda x: x.duplicated().sum())
     
     return df_aux.reset_index()
 
@@ -198,12 +191,7 @@ def agrupar_lecturas2(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
 def desplegar_lecturas(df: pd.DataFrame):
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
-
-    precipitaciones = df[col_precipitacion]
-    num_totales     = df.shape[0]
-    num_correctas   = precipitaciones[precipitaciones >= 0].count()
-    num_incorrectas = precipitaciones[precipitaciones < 0].count()
-    
+   
     # -----------------------------------------------------------------------------------------
     zona_criterio, _ = st.columns(2)
     agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Semana' : 'W', 'Mes' : 'ME', 'Año' : 'YE'}
@@ -213,34 +201,17 @@ def desplegar_lecturas(df: pd.DataFrame):
         value='Dia', 
     )
 
-    df_agrupado = agrupar_lecturas2(df, agrupaciones[criterio])
+    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
 
-    # -----------------------------------------------------------------------------------------
+    # Gráficos---------------------------------------------------------------------------------
     zona_stats, zona_chart = st.columns(2)
     with zona_chart.container(border=True):
         st.subheader(f'Lecturas agrupadas ({criterio})')
-        st.bar_chart(data=df_agrupado, x=col_fechahora, y='acumulado', use_container_width=True)
+        st.bar_chart(df_agrupado, x=col_fechahora, y='acumulado', use_container_width=True)
+
     with zona_stats.container(border=True):
         st.subheader(f'Categorías de lecturas')
         st.bar_chart(df_agrupado, x=col_fechahora, y=['positivos', 'negativos', 'duplicados'])
-
-        # resultados = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(contar_tipos_lecturas)
-        # st.dataframe(resultados, use_container_width=True)
-
-        # df_aux = pd.DataFrame()
-        # df_aux['positivos'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(lambda x: (x >= 0).sum())
-        # df_aux['negativos'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].apply(lambda x: (x < 0).sum())
-        # df_aux['duplicados'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_fechahora].apply(lambda x: x.duplicated().sum())
-        # st.dataframe(df_aux, use_container_width=True)
-
-        # df_aux = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_precipitacion].agg(
-        #     positivos = lambda x: (x >= 0).sum(),
-        #     negativos = lambda x: (x < 0).sum()
-        # )
-        # df_aux['duplicados'] = df.groupby(pd.Grouper(key=col_fechahora, freq=agrupaciones[criterio]))[col_fechahora].apply(lambda x: x.duplicated().sum())
-
-        # st.dataframe(df_aux, use_container_width=True)
-
 
     # Tablas ----------------------------------------------------------------------------------
     zona_lecturas, zona_agrupadas = st.columns(2, gap='large')
@@ -261,65 +232,6 @@ def desplegar_lecturas(df: pd.DataFrame):
     zona_agrupadas.dataframe(
         df_agrupado.head(num_agrupadas), hide_index=True, use_container_width=True,
     )
-
-    return
-
-
-    zona_stats = st.container(border=False)
-    zona_visual = st.container(border=True)
-    zona_params, zona_agrupado = zona_visual.columns([0.3, 0.7])
-    zona_tablas = st.container(border=True)
-    zona_lecturas, zona_agrupadas = zona_tablas.columns(2)
-
-
-    # Estadísticas ----------------------------------------------------------------------------
-    intervalo = estimar_intervalo_lecturas(df)
-    num_totales = df.shape[0]
-    num_correctas = df[df[col_precipitacion] >= 0].shape[0]
-
-    stats = {'Estadística' : [], 'Valor' : []} 
-
-    stats['Estadística'].append('Intervalo')
-    stats['Valor'].append(f'{intervalo} minutos')
-
-    stats['Estadística'].append('Lecturas totales')
-    stats['Valor'].append(f'{num_totales}')
-
-    stats['Estadística'].append('Lecturas correctas (P<=0)')
-    stats['Valor'].append(f'{num_correctas} ({num_correctas / num_totales :.2%})')
-
-    df_stats = pd.DataFrame(stats)
-    zona_stats.dataframe(df_stats, hide_index=True, width=400)
-
-    # Visualización ---------------------------------------------------------------------------
-    agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Semana' : 'W', 'Mes' : 'ME', 'Año' : 'YE'}
-    criterio = zona_params.select_slider(
-        'Criterio de agrupación', 
-        options=list(agrupaciones.keys()),
-        value='Dia',
-    )
-    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
-    zona_agrupado.scatter_chart(
-        data=df_agrupado, x=col_fechahora, y=col_precipitacion, size=30,
-    )
-
-
-
-    return
-
-    reemplazar_incorrectas = zona_params.checkbox('Asumir CERO en lecturas incorrectas')
-    if reemplazar_incorrectas: 
-        # TODO: ofrecer con selectbox varias opciones de relleno (0, -1, minimo, maximo, promedio...)
-        df.loc[df[col_precipitacion] == -1, col_precipitacion] = 0 # Cambiar lecturas no válidas a 0
-
-    # -----------------------------------------------------------------------------------------
-    # todo: revisar si hay que calcular con acumulado o full. creo que acum
-    # todo: o revisar si solo se usa el acum para la graficaque ya estoy dormido
-
-
-
-    # Cambiar lecturas no válidas a -1
-    df_acumulado.loc[df_acumulado[col_precipitacion] < 0, col_precipitacion] = -1 
 
 # =============================================================================================
 # Sección principal
