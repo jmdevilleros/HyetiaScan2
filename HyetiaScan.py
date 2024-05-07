@@ -193,11 +193,14 @@ def desplegar_lecturas(df: pd.DataFrame):
     col_precipitacion = df.columns[1]
     
     # -----------------------------------------------------------------------------------------
-    zona_control, zona_stats = st.columns([0.75, 0.26], gap='medium')
+    zona_control, zona_stats = st.columns([0.75, 0.25], gap='medium')
+    
     with zona_control.container(border=True, height=250):
-        st.write('Control negativos')
-        st.write('Control duplicados')
-        st.write('Control vacíos')
+        control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
+        if control_negativos == '0':
+            df[col_precipitacion] = df[col_precipitacion].clip(lower=0)
+        control_duplicados = st.radio('Control duplicados', options=['=', '0'], horizontal=True)
+        control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
 
     # -----------------------------------------------------------------------------------------
     zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
