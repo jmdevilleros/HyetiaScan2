@@ -194,10 +194,10 @@ def desplegar_lecturas(df: pd.DataFrame):
     
     # -----------------------------------------------------------------------------------------
     zona_control, zona_stats = st.columns([0.75, 0.26], gap='medium')
-    with zona_control.container(border=True):
-        st.write('Control')
-    with zona_stats.container(border=True):
-        st.write('Stats')
+    with zona_control.container(border=True, height=250):
+        st.write('Control negativos')
+        st.write('Control duplicados')
+        st.write('Control vacíos')
 
     # -----------------------------------------------------------------------------------------
     zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
@@ -228,7 +228,12 @@ def desplegar_lecturas(df: pd.DataFrame):
         )
 
     # Stats -----------------------------------------------------------------------------------
-    
+    with zona_stats.container(border=False, height=250):
+        #st.write('Stats')
+        suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
+        fig, ax = plt.subplots()
+        ax.pie(suma_columnas, labels=suma_columnas.index, autopct='%1.1f%%', startangle=90)
+        st.pyplot(fig)
 
     # Tablas ----------------------------------------------------------------------------------
     zona_agrupadas, zona_lecturas = st.columns([0.75, 0.25], gap='medium')
