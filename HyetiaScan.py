@@ -176,14 +176,16 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
-    
-    df_aux = df.groupby(agrupacion)[col_precipitacion].agg(
-        positivos = lambda x: (x >= 0).sum(),
-        negativos = lambda x: (x < 0).sum(),
-        acumulado = 'sum'
+    agregaciones_precipitacion = {
+        'positivos'  : lambda x: (x >= 0).sum(),
+        'negativos'  : lambda x: (x < 0).sum(),
+        'duplicados' : lambda x: None, # filler para mantener orden de las columnas
+        f'{col_precipitacion} acumulado': 'sum'
+    }
+    df_aux = df.groupby(agrupacion)[col_precipitacion].agg(**agregaciones_precipitacion)
+    df_aux['duplicados'] = df.groupby(agrupacion)[col_fechahora].apply(
+        lambda x: x.duplicated().sum()
     )
-    df_aux['duplicados'] \
-        = df.groupby(agrupacion)[col_fechahora].apply(lambda x: x.duplicated().sum())
     
     return df_aux.reset_index()
 
@@ -207,15 +209,15 @@ def desplegar_lecturas(df: pd.DataFrame):
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['positivos', 'negativos', 'duplicados']
 
-    criterio = st.radio(
-        'Lecturas agrupadas', options=list(agrupaciones.keys()), index=1, horizontal=True,
+    criterio = st.radio('Lecturas agrupadas', 
+        options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
 
     df_agrupado   = agrupar_lecturas(df, agrupaciones[criterio])
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
     
-    st.bar_chart(df_agrupado, x=col_fechahora, y='acumulado')
+    st.bar_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
 
     control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
     if control_negativos == '0':
