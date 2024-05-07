@@ -209,8 +209,11 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['positivos', 'negativos', 'duplicados']
 
-    # Controles deben ir primero, pues modifican df
-    control_negativos = st.radio('Control negativos', 
+    intervalo = estimar_intervalo_lecturas(df_lecturas)
+    st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
+
+    # Controles deben ir antes de visualizaciones, pues modifican dataframe
+    control_negativos = st.radio(f'Control [{col_precipitacion}] negativos', 
         options=['=', '0', 'borrar'], horizontal=True,
     )
     if control_negativos == '0':
@@ -218,7 +221,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     elif control_negativos == 'borrar':
         df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
-    control_duplicados = st.radio('Control duplicados', 
+    control_duplicados = st.radio(f'Control [{col_fechahora}] duplicados', 
         options=['=', 'dejar primero', 'dejar último', 'borrar'], 
         horizontal=True,
     )
