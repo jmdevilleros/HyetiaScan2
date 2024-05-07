@@ -206,64 +206,45 @@ def desplegar_lecturas(df: pd.DataFrame):
     col_precipitacion = df.columns[1]
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['positivos', 'negativos', 'duplicados']
-    
-    # -----------------------------------------------------------------------------------------
-    zona_control, zona_stats = st.columns([0.75, 0.25], gap='medium')
-    zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
-    _, zona_agrupadas, zona_lecturas, _ = st.columns([0.1, 0.50, 0.30, 0.1], gap='small')
 
-    with zona_chart_agrupadas.container(border=True):
-        zona_criterio = st.empty()
-        zona_chart = st.empty()
-    
-    criterio = zona_criterio.radio(
-        'Lecturas agrupadas', 
-        options=list(agrupaciones.keys()),
-        index=1, horizontal=True
+    criterio = st.radio(
+        'Lecturas agrupadas', options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
 
-    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
+    df_agrupado   = agrupar_lecturas(df, agrupaciones[criterio])
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
-    porcentajes = suma_columnas / suma_columnas.sum() * 100
+    porcentajes   = suma_columnas / suma_columnas.sum() * 100
     
-    zona_chart.bar_chart(
-        df_agrupado, x=col_fechahora, y='acumulado', 
-        use_container_width=True, height=265,
+    st.bar_chart(df_agrupado, x=col_fechahora, y='acumulado')
+
+    control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
+    if control_negativos == '0':
+        df[col_precipitacion] = df[col_precipitacion].clip(lower=0)
+    control_duplicados = st.radio('Control duplicados', options=['=', '0'], horizontal=True)
+    control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
+
+    categorias_elegidas = st.multiselect(
+        'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
     )
+    st.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
-    with zona_control.container(border=True, height=250):
-        control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
-        if control_negativos == '0':
-            df[col_precipitacion] = df[col_precipitacion].clip(lower=0)
-        control_duplicados = st.radio('Control duplicados', options=['=', '0'], horizontal=True)
-        control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
+    fig, ax = plt.subplots()
+    pie = ax.pie(suma_columnas)
+    labels = [
+        f'{label}: {value} ({porcentaje:.1f}%)' 
+        for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
+    ]
+    plt.legend(pie[0], labels,fontsize='large', loc='lower center')
+    fig.patch.set_alpha(0)
+    st.pyplot(fig)
 
-    with zona_chart_categorias.container(border=True):
-        categorias_elegidas = st.multiselect(
-            'Categorías de lecturas', 
-            options=lista_categorias, 
-            default=[c for c in lista_categorias if c != 'positivos'],
-        )
-        st.bar_chart(
-            df_agrupado, x=col_fechahora, y=categorias_elegidas, 
-            use_container_width=True, height=250,
-        )
+    for metric in labels:
+        match metric.split():
+            case [nombre, valor, porcentaje]:
+                st.metric(nombre, f'{porcentaje}')
 
-    with zona_stats.container(border=False):
-        fig, ax = plt.subplots()
-        pie = ax.pie(suma_columnas)
-        labels = [
-            f'{label}: {value} ({porcentaje:.1f}%)' 
-            for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
-        ]
-        plt.legend(pie[0], labels,fontsize='large', loc='lower center')
-        fig.patch.set_alpha(0)
-        st.pyplot(fig)
-
-    with zona_lecturas.container(border=True):
-        ver_dataframe(df_lecturas, 'Detalle lecturas individuales')
-    with zona_agrupadas.container(border=True):
-        ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
+    ver_dataframe(df_lecturas, 'Detalle lecturas individuales')
+    ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
 
 # =============================================================================================
 # Sección principal
