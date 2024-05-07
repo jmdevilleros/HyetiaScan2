@@ -188,33 +188,37 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     return df_aux.reset_index()
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df: pd.DataFrame):
+def desplegar_lecturas(df: pd.DataFrame): 
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
    
     # -----------------------------------------------------------------------------------------
-    zona_criterio, _ = st.columns(2)
-    agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    criterio = zona_criterio.radio(
-        'Criterio de agrupación', 
-        options=list(agrupaciones.keys()),
-        index=1, horizontal=True
-    )
-
-    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
-
-    # Gráficos---------------------------------------------------------------------------------
     zona_stats, zona_chart = st.columns(2, gap='large')
 
     with zona_chart.container(border=True):
-        st.subheader(f'Lecturas agrupadas ({criterio})')
+        header = st.empty()
+        agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
+        criterio = st.radio(
+            'Criterio de agrupación', 
+            options=list(agrupaciones.keys()),
+            index=1, horizontal=True
+        )
+        header.subheader(f'Lecturas agrupadas ({criterio})')
+        df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
         st.bar_chart(df_agrupado, x=col_fechahora, y='acumulado', use_container_width=True)
 
     with zona_stats.container(border=True):
         st.subheader(f'Categorías de lecturas')
-        st.bar_chart(df_agrupado, x=col_fechahora, y=['positivos', 'negativos', 'duplicados'])
+        lista_categorias = ['positivos', 'negativos', 'duplicados']
+        categorias_elegidas = st.multiselect(
+            'Categorías a visualizar', 
+            options=lista_categorias, 
+            default=[c for c in lista_categorias if c != 'positivos'],
+        )
+        st.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
     # Tablas ----------------------------------------------------------------------------------
+    st.divider()
     zona_lecturas, zona_agrupadas = st.columns(2, gap='large')
     zona_lecturas.subheader('Detalle lecturas individuales')
     num_lecturas = zona_lecturas.slider(
