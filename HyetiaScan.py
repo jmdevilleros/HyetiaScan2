@@ -200,9 +200,9 @@ def desplegar_lecturas(df: pd.DataFrame):
         st.write('Stats')
 
     # -----------------------------------------------------------------------------------------
-    zona_stats, zona_chart = st.columns(2, gap='medium')
+    zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
 
-    with zona_chart.container(border=True):
+    with zona_chart_agrupadas.container(border=True):
         agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
         criterio = st.radio(
             'Lecturas agrupadas', 
@@ -212,10 +212,10 @@ def desplegar_lecturas(df: pd.DataFrame):
         df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
         st.bar_chart(
             df_agrupado, x=col_fechahora, y='acumulado', 
-            use_container_width=True, height=250,
+            use_container_width=True, height=265,
         )
 
-    with zona_stats.container(border=True):
+    with zona_chart_categorias.container(border=True):
         lista_categorias = ['positivos', 'negativos', 'duplicados']
         categorias_elegidas = st.multiselect(
             'Categorías de lecturas', 
@@ -226,6 +226,9 @@ def desplegar_lecturas(df: pd.DataFrame):
             df_agrupado, x=col_fechahora, y=categorias_elegidas, 
             use_container_width=True, height=250,
         )
+
+    # Stats -----------------------------------------------------------------------------------
+    
 
     # Tablas ----------------------------------------------------------------------------------
     zona_agrupadas, zona_lecturas = st.columns([0.75, 0.25], gap='medium')
