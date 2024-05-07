@@ -188,13 +188,49 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     return df_aux.reset_index()
 
 # ---------------------------------------------------------------------------------------------
+def ver_dataframe(df: pd.DataFrame, titulo: str = None):
+    if titulo:
+        st.write(titulo)
+    cantidad = st.slider(
+        MENSAJES['previsualcantidad'],
+        min_value=0, 
+        max_value=df.shape[0], 
+        value=10, 
+        step=10,
+    )
+    st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df: pd.DataFrame): 
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
+    agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
+    lista_categorias = ['positivos', 'negativos', 'duplicados']
     
     # -----------------------------------------------------------------------------------------
     zona_control, zona_stats = st.columns([0.75, 0.25], gap='medium')
+    zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
+    _, zona_agrupadas, zona_lecturas, _ = st.columns([0.1, 0.50, 0.30, 0.1], gap='small')
+
+    with zona_chart_agrupadas.container(border=True):
+        zona_criterio = st.empty()
+        zona_chart = st.empty()
     
+    criterio = zona_criterio.radio(
+        'Lecturas agrupadas', 
+        options=list(agrupaciones.keys()),
+        index=1, horizontal=True
+    )
+
+    df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
+    suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
+    porcentajes = suma_columnas / suma_columnas.sum() * 100
+    
+    zona_chart.bar_chart(
+        df_agrupado, x=col_fechahora, y='acumulado', 
+        use_container_width=True, height=265,
+    )
+
     with zona_control.container(border=True, height=250):
         control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
         if control_negativos == '0':
@@ -202,24 +238,7 @@ def desplegar_lecturas(df: pd.DataFrame):
         control_duplicados = st.radio('Control duplicados', options=['=', '0'], horizontal=True)
         control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
 
-    # -----------------------------------------------------------------------------------------
-    zona_chart_agrupadas, zona_chart_categorias = st.columns(2, gap='medium')
-
-    with zona_chart_agrupadas.container(border=True):
-        agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-        criterio = st.radio(
-            'Lecturas agrupadas', 
-            options=list(agrupaciones.keys()),
-            index=1, horizontal=True
-        )
-        df_agrupado = agrupar_lecturas(df, agrupaciones[criterio])
-        st.bar_chart(
-            df_agrupado, x=col_fechahora, y='acumulado', 
-            use_container_width=True, height=265,
-        )
-
     with zona_chart_categorias.container(border=True):
-        lista_categorias = ['positivos', 'negativos', 'duplicados']
         categorias_elegidas = st.multiselect(
             'Categorías de lecturas', 
             options=lista_categorias, 
@@ -230,10 +249,7 @@ def desplegar_lecturas(df: pd.DataFrame):
             use_container_width=True, height=250,
         )
 
-    # Stats -----------------------------------------------------------------------------------
     with zona_stats.container(border=False):
-        suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
-        porcentajes = suma_columnas / suma_columnas.sum() * 100
         fig, ax = plt.subplots()
         pie = ax.pie(suma_columnas)
         labels = [
@@ -244,28 +260,10 @@ def desplegar_lecturas(df: pd.DataFrame):
         fig.patch.set_alpha(0)
         st.pyplot(fig)
 
-    # Tablas ----------------------------------------------------------------------------------
-    _, zona_agrupadas, zona_lecturas, _ = st.columns([0.1, 0.50, 0.30, 0.1], gap='small')
-
     with zona_lecturas.container(border=True):
-        st.write('Detalle lecturas individuales')
-        num_lecturas = st.slider(
-            MENSAJES['previsualcantidad'], key='num_enlecturas',
-            min_value=10, max_value=df.shape[0], value=10, step=10,
-        )
-        st.dataframe(
-            df.head(num_lecturas), hide_index=True, use_container_width=True,
-        )
-
+        ver_dataframe(df_lecturas, 'Detalle lecturas individuales')
     with zona_agrupadas.container(border=True):
-        st.write(f'Detalle lecturas agrupadas ({criterio})')
-        num_agrupadas = st.slider(
-            MENSAJES['previsualcantidad'], key='num_enagrupadas',
-            min_value=0, max_value=df_agrupado.shape[0], value=10, step=10,
-        )
-        st.dataframe(
-            df_agrupado.head(num_agrupadas), hide_index=True, use_container_width=True,
-        )
+        ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
 
 # =============================================================================================
 # Sección principal
