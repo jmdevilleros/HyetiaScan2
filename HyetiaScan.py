@@ -203,27 +203,48 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df: pd.DataFrame): 
-    col_fechahora = df.columns[0]
-    col_precipitacion = df.columns[1]
+def desplegar_lecturas(df_individuales: pd.DataFrame): 
+    col_fechahora = df_individuales.columns[0]
+    col_precipitacion = df_individuales.columns[1]
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['positivos', 'negativos', 'duplicados']
+
+    # Controles deben ir primero, pues modifican df
+    control_negativos = st.radio('Control negativos', 
+        options=['=', '0', 'borrar'], horizontal=True,
+    )
+    if control_negativos == '0':
+        df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
+    elif control_negativos == 'borrar':
+        df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
+
+    control_duplicados = st.radio('Control duplicados', 
+        options=['=', 'dejar primero', 'dejar último', 'borrar'], 
+        horizontal=True,
+    )
+    match control_duplicados:
+        case 'dejar primero': 
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
+        case 'dejar último':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
+        case 'borrar':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
+
+    #control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
 
     criterio = st.radio('Lecturas agrupadas', 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
 
-    df_agrupado   = agrupar_lecturas(df, agrupaciones[criterio])
+    df_agrupado   = agrupar_lecturas(df_individuales, agrupaciones[criterio])
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
-    
-    st.bar_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
+    metricas = [
+        f'{label}: {value} ({porcentaje:.1f}%)' 
+        for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
+    ]
 
-    control_negativos = st.radio('Control negativos', options=['=', '0'], horizontal=True)
-    if control_negativos == '0':
-        df[col_precipitacion] = df[col_precipitacion].clip(lower=0)
-    control_duplicados = st.radio('Control duplicados', options=['=', '0'], horizontal=True)
-    control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
+    st.bar_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
 
     categorias_elegidas = st.multiselect(
         'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
@@ -232,20 +253,16 @@ def desplegar_lecturas(df: pd.DataFrame):
 
     fig, ax = plt.subplots()
     pie = ax.pie(suma_columnas)
-    labels = [
-        f'{label}: {value} ({porcentaje:.1f}%)' 
-        for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
-    ]
-    plt.legend(pie[0], labels,fontsize='large', loc='lower center')
+    plt.legend(pie[0], metricas,fontsize='large', loc='lower center')
     fig.patch.set_alpha(0)
     st.pyplot(fig)
 
-    for metric in labels:
-        match metric.split():
-            case [nombre, valor, porcentaje]:
-                st.metric(nombre, f'{porcentaje}')
+    for m in metricas:
+        match m.split():
+            case nombre, valor, porcentaje:
+                st.metric(nombre, f'{valor} {porcentaje}')
 
-    ver_dataframe(df_lecturas, 'Detalle lecturas individuales')
+    ver_dataframe(df_individuales, 'Detalle lecturas individuales')
     ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
 
 # =============================================================================================
