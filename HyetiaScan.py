@@ -228,15 +228,21 @@ def desplegar_lecturas(df: pd.DataFrame):
         )
 
     # Stats -----------------------------------------------------------------------------------
-    with zona_stats.container(border=False, height=250):
-        #st.write('Stats')
+    with zona_stats.container(border=False):
         suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
+        porcentajes = suma_columnas / suma_columnas.sum() * 100
         fig, ax = plt.subplots()
-        ax.pie(suma_columnas, labels=suma_columnas.index, autopct='%1.1f%%', startangle=90)
+        pie = ax.pie(suma_columnas)
+        labels = [
+            f'{label}: {value} ({porcentaje:.1f}%)' 
+            for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
+        ]
+        plt.legend(pie[0], labels,fontsize='large', loc='lower center')
+        fig.patch.set_alpha(0)
         st.pyplot(fig)
 
     # Tablas ----------------------------------------------------------------------------------
-    zona_agrupadas, zona_lecturas = st.columns([0.75, 0.25], gap='medium')
+    _, zona_agrupadas, zona_lecturas, _ = st.columns([0.1, 0.50, 0.30, 0.1], gap='small')
 
     with zona_lecturas.container(border=True):
         st.write('Detalle lecturas individuales')
