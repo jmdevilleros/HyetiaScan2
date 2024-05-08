@@ -177,7 +177,7 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     agregaciones_precipitacion = {
-        'positivos'  : lambda x: (x >= 0).sum(),
+        'correctas'  : lambda x: (x >= 0).sum(),
         'negativos'  : lambda x: (x < 0).sum(),
         'duplicados' : lambda x: None, # filler para mantener orden de las columnas
         f'{col_precipitacion} acumulado': 'sum'
@@ -206,35 +206,20 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 def desplegar_lecturas(df_individuales: pd.DataFrame): 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
-    agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    lista_categorias = ['positivos', 'negativos', 'duplicados']
+    agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
+    lista_categorias = ['correctas', 'negativos', 'duplicados']
 
     intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
 
+    # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    control_negativos = st.radio(f'Control [{col_precipitacion}] negativos', 
-        options=['=', '0', 'borrar'], horizontal=True,
-    )
-    if control_negativos == '0':
-        df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
-    elif control_negativos == 'borrar':
-        df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
-
-    control_duplicados = st.radio(f'Control [{col_fechahora}] duplicados', 
-        options=['=', 'dejar primero', 'dejar último', 'borrar'], 
-        horizontal=True,
-    )
-    match control_duplicados:
-        case 'dejar primero': 
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'dejar último':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'borrar':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
+    df_individuales = control_negativos(df_individuales, col_precipitacion)
+    df_individuales = control_duplicados(df_individuales, col_fechahora)
 
     #control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
 
+    # -----------------------------------------------------------------------------------------
     criterio = st.radio('Lecturas agrupadas', 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
@@ -247,13 +232,20 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
         for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
     ]
 
-    st.bar_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
+    # -----------------------------------------------------------------------------------------
+    # Mostrar gráfico de precipitaciones
+    st.line_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
 
+    # -----------------------------------------------------------------------------------------
     categorias_elegidas = st.multiselect(
         'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
     )
+
+    # -----------------------------------------------------------------------------------------
+    # Mostrar gráfico de categoria de lecturas
     st.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
+    # -----------------------------------------------------------------------------------------
     fig, ax = plt.subplots()
     pie = ax.pie(suma_columnas)
     plt.legend(pie[0], metricas,fontsize='large', loc='lower center')
@@ -265,8 +257,36 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
             case nombre, valor, porcentaje:
                 st.metric(nombre, f'{valor} {porcentaje}')
 
+    # -----------------------------------------------------------------------------------------
     ver_dataframe(df_individuales, 'Detalle lecturas individuales')
     ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
+
+# ---------------------------------------------------------------------------------------------
+def control_duplicados(df_individuales, col_fechahora):
+    control_duplicados = st.radio(f'Control [{col_fechahora}] duplicados', 
+        options=['No modificar', 'Dejar el primero', 'Dejar el último', 'Borrar'], 
+        horizontal=True,
+    )
+    match control_duplicados:
+        case 'Dejar el primero': 
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
+        case 'Dejar el último':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
+        case 'Borrar':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
+    return df_individuales
+
+# ---------------------------------------------------------------------------------------------
+def control_negativos(df_individuales, col_precipitacion):
+    control_negativos = st.radio(f'Control [{col_precipitacion}] negativos', 
+        options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
+    )
+    match control_negativos:
+        case 'Asumir cero':
+            df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
+        case 'Borrar':
+            df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
+    return df_individuales
 
 # =============================================================================================
 # Sección principal
