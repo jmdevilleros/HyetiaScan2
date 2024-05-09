@@ -177,13 +177,13 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     agregaciones_precipitacion = {
-        'correctas'  : lambda x: (x >= 0).sum(),
-        'negativos'  : lambda x: (x < 0).sum(),
-        'duplicados' : lambda x: None, # filler para mantener orden de las columnas
+        'válidas'  : lambda x: (x >= 0).sum(),
+        'corruptas'  : lambda x: (x < 0).sum(),
+        'duplicadas' : lambda _: None, # filler para mantener orden de las columnas
         f'{col_precipitacion} acumulado': 'sum'
     }
     df_aux = df.groupby(agrupacion)[col_precipitacion].agg(**agregaciones_precipitacion)
-    df_aux['duplicados'] = df.groupby(agrupacion)[col_fechahora].apply(
+    df_aux['duplicadas'] = df.groupby(agrupacion)[col_fechahora].apply(
         lambda x: x.duplicated().sum()
     )
     
@@ -207,15 +207,15 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    lista_categorias = ['correctas', 'negativos', 'duplicados']
+    lista_categorias = ['válidas', 'corruptas', 'duplicadas']
 
     intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    df_individuales = control_negativos(df_individuales, col_precipitacion)
-    df_individuales = control_duplicados(df_individuales, col_fechahora)
+    df_individuales = control_corruptas(df_individuales, col_precipitacion)
+    df_individuales = control_duplicadas(df_individuales, col_fechahora)
 
     #control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
 
@@ -262,26 +262,26 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
 
 # ---------------------------------------------------------------------------------------------
-def control_duplicados(df_individuales, col_fechahora):
-    control_duplicados = st.radio(f'Control [{col_fechahora}] duplicados', 
-        options=['No modificar', 'Dejar el primero', 'Dejar el último', 'Borrar'], 
+def control_duplicadas(df_individuales, col_fechahora):
+    control = st.radio(f'Control lecturas duplicadas por [{col_fechahora}]', 
+        options=['No modificar', 'Dejar primera lectura', 'Dejar última lectura', 'Borrar todas'], 
         horizontal=True,
     )
-    match control_duplicados:
-        case 'Dejar el primero': 
+    match control:
+        case 'Dejar primera lectura': 
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar el último':
+        case 'Dejar última lectura':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Borrar':
+        case 'Borrar todas':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
     return df_individuales
 
 # ---------------------------------------------------------------------------------------------
-def control_negativos(df_individuales, col_precipitacion):
-    control_negativos = st.radio(f'Control [{col_precipitacion}] negativos', 
+def control_corruptas(df_individuales, col_precipitacion):
+    control = st.radio(f'Control lecturas corruptas en [{col_precipitacion}]', 
         options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
     )
-    match control_negativos:
+    match control:
         case 'Asumir cero':
             df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
         case 'Borrar':
