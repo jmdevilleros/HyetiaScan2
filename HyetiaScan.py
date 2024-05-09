@@ -177,14 +177,14 @@ def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
     col_precipitacion = df.columns[1]
     agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
     agregaciones_precipitacion = {
-        'válidas'  : lambda x: (x >= 0).sum(),
+        'válidas'    : lambda x: (x >= 0).sum(),
         'corruptas'  : lambda x: (x < 0).sum(),
         'duplicadas' : lambda _: None, # filler para mantener orden de las columnas
         f'{col_precipitacion} acumulado': 'sum'
     }
     df_aux = df.groupby(agrupacion)[col_precipitacion].agg(**agregaciones_precipitacion)
     df_aux['duplicadas'] = df.groupby(agrupacion)[col_fechahora].apply(
-        lambda x: x.duplicated().sum()
+        lambda x: x.duplicated(keep=False).sum()
     )
     
     return df_aux.reset_index()
