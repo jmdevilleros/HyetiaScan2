@@ -199,6 +199,7 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
         max_value=df.shape[0], 
         value=10, 
         step=int(df.shape[0] / 100) + 1,
+        key=f'slider_{titulo}'
     )
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
