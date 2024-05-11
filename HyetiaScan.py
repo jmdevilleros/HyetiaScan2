@@ -143,7 +143,7 @@ def desplegar_archivo(df: pd.DataFrame):
     num_vista = c1.slider(
         MENSAJES['previsualcantidad'], 
         min_value=10, max_value=df.shape[0], 
-        value=10, step=100,
+        value=10, step=int(df.shape[0] / 100) + 1,
         key='num_enarchivo',
     )
     c2.dataframe(
@@ -198,7 +198,7 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
         min_value=0, 
         max_value=df.shape[0], 
         value=10, 
-        step=10,
+        step=int(df.shape[0] / 100) + 1,
     )
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
