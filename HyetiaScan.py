@@ -171,23 +171,41 @@ def estimar_intervalo_lecturas(df: pd.DataFrame) -> float:
     return intervalo
 
 # ---------------------------------------------------------------------------------------------
+def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
+    acumulado  = grupo['sum'][grupo['sum'] > 0].sum()
+    correctas  = grupo['correctas'].sum()
+    perdidas   = grupo['size'][grupo['size'] == 0].count()
+    duplicadas = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
+    corruptas  = grupo['sum'][grupo['sum'] < 0].count()
+    return {
+        'acumulado'  : acumulado, 
+        'correctas'  : correctas, 
+        'perdidas'   : perdidas, 
+        'duplicadas' : duplicadas, 
+        'corruptas'  : corruptas,
+    }
+
+# ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def agrupar_lecturas(df: pd.DataFrame, frecuencia: str) -> pd.DataFrame:
+def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
-    agrupacion = pd.Grouper(key=col_fechahora, freq=frecuencia)
-    agregaciones_precipitacion = {
-        'válidas'    : lambda x: (x >= 0).sum(),
-        'corruptas'  : lambda x: (x < 0).sum(),
-        'duplicadas' : lambda _: None, # filler para mantener orden de las columnas
-        f'{col_precipitacion} acumulado': 'sum'
-    }
-    df_aux = df.groupby(agrupacion)[col_precipitacion].agg(**agregaciones_precipitacion)
-    df_aux['duplicadas'] = df.groupby(agrupacion)[col_fechahora].apply(
-        lambda x: x.duplicated(keep=False).sum()
-    )
-    
-    return df_aux.reset_index()
+
+    # Generar secuencia de tiempo con el mismo intervalo para rellenar posibles vacíos
+    # y generar valores de conteo "size" y "sum" para detección de valores anormales.
+    sec_base = df.resample(intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
+
+    # Agregar columna con lecturas correctas, basadas en evaluar "sum" y "size". 
+    # Se vectoriza aparte de la agregación para optimizar velocidad.
+    sec_base['correctas'] =  (sec_base['sum'] >= 0) & (sec_base['size'] == 1)
+
+    # Ahora agrupar por intervalo requerido y evaluar estadísticas de cada grupo
+    sec_grupo = sec_base.resample(intervalo_grupo).apply(evaluar_grupo_lecturas)
+
+    # Convertir serie en DataFrame
+    df_resultado = sec_grupo.apply(lambda row: pd.Series(row)).reset_index()
+
+    return df_resultado
 
 # ---------------------------------------------------------------------------------------------
 def ver_dataframe(df: pd.DataFrame, titulo: str = None):
@@ -207,8 +225,8 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 def desplegar_lecturas(df_individuales: pd.DataFrame): 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
-    agrupaciones = {'Hora' : 'h', 'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    lista_categorias = ['válidas', 'corruptas', 'duplicadas']
+    agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
+    lista_categorias = ['correctas', 'perdidas', 'duplicadas', 'corruptas']
 
     intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
@@ -225,17 +243,19 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
 
-    df_agrupado   = agrupar_lecturas(df_individuales, agrupaciones[criterio])
+    df_agrupado   = agrupar_lecturas(
+        df_individuales, intervalo_base=f'{intervalo}min', intervalo_grupo=agrupaciones[criterio],
+    )
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
     metricas = [
-        f'{label}: {value} ({porcentaje:.1f}%)' 
+        f'{label}: {value} ({porcentaje:.2f}%)' 
         for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
     ]
 
     # -----------------------------------------------------------------------------------------
     # Mostrar gráfico de precipitaciones
-    st.line_chart(df_agrupado, x=col_fechahora, y=f'{col_precipitacion} acumulado')
+    st.line_chart(df_agrupado, x=col_fechahora, y='acumulado')
 
     # -----------------------------------------------------------------------------------------
     categorias_elegidas = st.multiselect(
