@@ -235,9 +235,9 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     with st.container(border=True):
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
     with st.container(border=True):
-        zona_categorias, zona_control = st.columns([0.7, 0.3])
+        zona_categorias, zona_control = st.columns([0.7, 0.3], gap='large')
     with st.expander('Detalle de lecturas', expanded=False):
-        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3])
+        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='large')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
