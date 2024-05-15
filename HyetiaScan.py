@@ -231,18 +231,52 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
 
+    # Preparar zonas de visualización ---------------------------------------------------------
+    with st.container(border=True):
+        zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
+    with st.container(border=True):
+        zona_categorias, zona_control = st.columns([0.7, 0.3])
+    with st.expander('Detalle de lecturas', expanded=False):
+        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3])
+
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    df_individuales = control_corruptas(df_individuales, col_precipitacion)
-    df_individuales = control_duplicadas(df_individuales, col_fechahora)
 
-    #control_vacios = st.radio('Control vacíos', options=['=', '0'], horizontal=True)
+    # Control de perdidas ---------------------------------------------------------------------
+    control = zona_control.selectbox(
+        'Control de lecturas perdidas',
+        options=['No modificar', 'Asumir cero'],
+    )
+    
+    # Control de duplicadas -------------------------------------------------------------------
+    control = zona_control.selectbox(
+        f'Control lecturas duplicadas por [{col_fechahora}]', 
+        options=['No modificar', 'Dejar primera lectura', 'Dejar última lectura', 'Borrar todas'], 
+    )
+    match control:
+        case 'Dejar primera lectura': 
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
+        case 'Dejar última lectura':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
+        case 'Borrar todas':
+            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
+
+    # Control corruptas
+    control = zona_control.selectbox(f'Control lecturas corruptas en [{col_precipitacion}]', 
+        options=['No modificar', 'Asumir cero', 'Borrar'],
+    )
+    match control:
+        case 'Asumir cero':
+            df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
+        case 'Borrar':
+            df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
     # -----------------------------------------------------------------------------------------
-    criterio = st.radio('Lecturas agrupadas', 
+    criterio = zona_grafico_agrupadas.radio('Lecturas agrupadas', 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
 
+    # Generar datos agrupados según criterio y calcular métricas -------------------------------
     df_agrupado   = agrupar_lecturas(
         df_individuales, intervalo_base=f'{intervalo}min', intervalo_grupo=agrupaciones[criterio],
     )
@@ -255,59 +289,34 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
 
     # -----------------------------------------------------------------------------------------
     # Mostrar gráfico de precipitaciones
-    st.line_chart(df_agrupado, x=col_fechahora, y='acumulado')
+    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='acumulado')
 
     # -----------------------------------------------------------------------------------------
-    categorias_elegidas = st.multiselect(
+    categorias_elegidas = zona_categorias.multiselect(
         'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
     )
 
     # -----------------------------------------------------------------------------------------
     # Mostrar gráfico de categoria de lecturas
-    st.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
+    zona_categorias.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
     # -----------------------------------------------------------------------------------------
     fig, ax = plt.subplots()
     pie = ax.pie(suma_columnas)
-    plt.legend(pie[0], metricas,fontsize='large', loc='lower center')
+    plt.legend(pie[0], metricas, fontsize='medium', loc='lower center')
     fig.patch.set_alpha(0)
-    st.pyplot(fig)
+    zona_metricas.pyplot(fig)
 
-    for m in metricas:
-        match m.split():
-            case nombre, valor, porcentaje:
-                st.metric(nombre, f'{valor} {porcentaje}')
+    # for m in metricas:
+    #     match m.split():
+    #         case nombre, valor, porcentaje:
+    #             zona_metricas.caption(f'{nombre} {valor} {porcentaje}')
 
     # -----------------------------------------------------------------------------------------
-    ver_dataframe(df_individuales, 'Detalle lecturas individuales')
-    ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
-
-# ---------------------------------------------------------------------------------------------
-def control_duplicadas(df_individuales, col_fechahora):
-    control = st.radio(f'Control lecturas duplicadas por [{col_fechahora}]', 
-        options=['No modificar', 'Dejar primera lectura', 'Dejar última lectura', 'Borrar todas'], 
-        horizontal=True,
-    )
-    match control:
-        case 'Dejar primera lectura': 
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar última lectura':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Borrar todas':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
-    return df_individuales
-
-# ---------------------------------------------------------------------------------------------
-def control_corruptas(df_individuales, col_precipitacion):
-    control = st.radio(f'Control lecturas corruptas en [{col_precipitacion}]', 
-        options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
-    )
-    match control:
-        case 'Asumir cero':
-            df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
-        case 'Borrar':
-            df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
-    return df_individuales
+    with zona_detalle_agrupadas:
+        ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
+    with zona_detalle_individuales:
+        ver_dataframe(df_individuales, 'Detalle lecturas individuales')
 
 # =============================================================================================
 # Sección principal
