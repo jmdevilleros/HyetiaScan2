@@ -186,6 +186,13 @@ def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
     }
 
 # ---------------------------------------------------------------------------------------------
+def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.DataFrame:
+    col_fechahora = df.columns[0]
+    serie = df.resample(intervalo, on=col_fechahora).first()
+    df_perdidas =  serie[serie.isnull().any(axis=1)].fillna(relleno).reset_index()
+    return df_perdidas
+
+# ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
 def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
@@ -242,16 +249,6 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
 
-    # Control de perdidas ---------------------------------------------------------------------
-    control_perdidas = zona_control.radio(
-        'Control de lecturas perdidas',
-        options=['No modificar', 'Asumir cero'], horizontal=True,
-        disabled=True
-    )
-    match control_perdidas:
-        case 'Asumir cero':
-            pass
-
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
         f'Control lecturas duplicadas por [{col_fechahora}]', 
@@ -265,7 +262,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
         case 'Borrar':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
 
-    # Control corruptas
+    # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(f'Control lecturas corruptas en [{col_precipitacion}]', 
         options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
     )
@@ -275,12 +272,24 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
         case 'Borrar':
             df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
-    # -----------------------------------------------------------------------------------------
+    # Control de perdidas ---------------------------------------------------------------------
+    # Debe ser el último contgrol pues los otros pueden borrar
+    control_perdidas = zona_control.radio(
+        'Control de lecturas perdidas',
+        options=['No modificar', 'Asumir cero'], horizontal=True,
+    )
+    match control_perdidas:
+        case 'Asumir cero':
+            df_relleno = relleno_perdidas(df_individuales, intervalo=f'{intervalo}min', relleno=0)
+            if not df_relleno.empty:
+                df_individuales = pd.concat(
+                    [df_individuales, df_relleno]
+                ).sort_values(by=col_fechahora).reset_index(drop=True)
+
+    # Generar datos agrupados según criterio y calcular métricas -------------------------------
     criterio = zona_grafico_agrupadas.radio('Lecturas agrupadas', 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
-
-    # Generar datos agrupados según criterio y calcular métricas -------------------------------
     df_agrupado   = agrupar_lecturas(
         df_individuales, intervalo_base=f'{intervalo}min', intervalo_grupo=agrupaciones[criterio],
     )
@@ -291,32 +300,23 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
         for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
     ]
 
-    # -----------------------------------------------------------------------------------------
-    # Mostrar gráfico de precipitaciones
+    # Mostrar gráfico de precipitaciones ------------------------------------------------------
     zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='acumulado')
 
-    # -----------------------------------------------------------------------------------------
+    # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
         'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
     )
-
-    # -----------------------------------------------------------------------------------------
-    # Mostrar gráfico de categoria de lecturas
     zona_categorias.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
-    # -----------------------------------------------------------------------------------------
+    # Diagrama de tarta con métricas ----------------------------------------------------------
     fig, ax = plt.subplots()
     pie = ax.pie(suma_columnas)
     plt.legend(pie[0], metricas, fontsize='medium', loc='lower center')
     fig.patch.set_alpha(0)
     zona_metricas.pyplot(fig)
 
-    # for m in metricas:
-    #     match m.split():
-    #         case nombre, valor, porcentaje:
-    #             zona_metricas.caption(f'{nombre} {valor} {porcentaje}')
-
-    # -----------------------------------------------------------------------------------------
+    # Detalle de lecturas ---------------------------------------------------------------------
     with zona_detalle_agrupadas:
         ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
     with zona_detalle_individuales:
