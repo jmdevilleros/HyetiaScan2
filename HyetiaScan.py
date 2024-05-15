@@ -287,7 +287,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
     metricas = [
-        f'{label}: {value} ({porcentaje:.2f}%)' 
+        f'{label}: {value:.0f} ({porcentaje:.2f}%)' 
         for label, value, porcentaje in zip(suma_columnas.index, suma_columnas, porcentajes)
     ]
 
