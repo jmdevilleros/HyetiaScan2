@@ -243,29 +243,33 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
 
     # Control de perdidas ---------------------------------------------------------------------
-    control = zona_control.selectbox(
+    control_perdidas = zona_control.radio(
         'Control de lecturas perdidas',
-        options=['No modificar', 'Asumir cero'],
+        options=['No modificar', 'Asumir cero'], horizontal=True,
+        disabled=True
     )
-    
+    match control_perdidas:
+        case 'Asumir cero':
+            pass
+
     # Control de duplicadas -------------------------------------------------------------------
-    control = zona_control.selectbox(
+    control_duplicadas = zona_control.radio(
         f'Control lecturas duplicadas por [{col_fechahora}]', 
-        options=['No modificar', 'Dejar primera lectura', 'Dejar última lectura', 'Borrar todas'], 
+        options=['No modificar', 'Dejar primera', 'Dejar última', 'Borrar'], horizontal=True,
     )
-    match control:
-        case 'Dejar primera lectura': 
+    match control_duplicadas:
+        case 'Dejar primera': 
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar última lectura':
+        case 'Dejar última':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Borrar todas':
+        case 'Borrar':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
 
     # Control corruptas
-    control = zona_control.selectbox(f'Control lecturas corruptas en [{col_precipitacion}]', 
-        options=['No modificar', 'Asumir cero', 'Borrar'],
+    control_corruptas = zona_control.radio(f'Control lecturas corruptas en [{col_precipitacion}]', 
+        options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
     )
-    match control:
+    match control_corruptas:
         case 'Asumir cero':
             df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
         case 'Borrar':
