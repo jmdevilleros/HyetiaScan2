@@ -230,14 +230,13 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df_individuales: pd.DataFrame) -> pd.DataFrame : 
+def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['correctas', 'perdidas', 'duplicadas', 'corruptas']
     lista_anormales = lista_categorias[1:]
 
-    intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
 
     # Preparar zonas de visualización ---------------------------------------------------------
@@ -252,6 +251,13 @@ def desplegar_lecturas(df_individuales: pd.DataFrame) -> pd.DataFrame :
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
 
     zona_control.write('Control de lecturas anormales:')
+
+    # Control de desfasadas
+    control_desfasadas = zona_control.radio(
+        f'Desfasadas', options=['No modificar', 'Alinear antes', 'Alinear después', 'Borrar'],
+        horizontal=True,
+        disabled=True
+    )
 
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
@@ -333,7 +339,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame) -> pd.DataFrame :
     return df_individuales
 
 # ---------------------------------------------------------------------------------------------
-def calcular_eventos(df_procesadas: pd.DataFrame):
+def calcular_eventos(df_procesadas: pd.DataFrame, intervalo: float):
     ver_dataframe(df_procesadas)
 
     return
@@ -388,12 +394,14 @@ if (col_precipitacion is None):
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 
+intervalo = estimar_intervalo_lecturas(df_lecturas)
+
 with tab_lecturas:
-    df_lecturas_procesadas = desplegar_lecturas(df_lecturas)
+    df_lecturas_procesadas = desplegar_lecturas(df_lecturas, intervalo)
 
 with tab_eventos:
     if df_lecturas_procesadas is None:
         st.warning('Aún quedan lecturas anormales por controlar.')
         st.stop()
 
-    calcular_eventos(df_lecturas_procesadas)
+    calcular_eventos(df_lecturas_procesadas, intervalo)
