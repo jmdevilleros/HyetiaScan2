@@ -12,12 +12,13 @@
 # Bibliotecas
 # =============================================================================================
 
-from mensajes_es import MENSAJES
 import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
 import re
+
+from mensajes_es import MENSAJES
 
 # =============================================================================================
 # Globales
@@ -103,9 +104,9 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
     return nombre_col
 
 # ---------------------------------------------------------------------------------------------
-# Verificar explícitamente si hay columnas tipo object (strings) 
-# que no se pueden convertir a tipo fechahora por errores de formato
 def buscar_errores_fechahora(df):
+    # Verificar explícitamente si hay columnas tipo object (strings) 
+    # que no se pueden convertir a tipo fechahora por errores de formato
     try:
         for col in df.select_dtypes(include='object'): 
             pd.to_datetime(df[col], format='%Y-%m-%d %H:%M:%S')
@@ -229,11 +230,12 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df_individuales: pd.DataFrame): 
+def desplegar_lecturas(df_individuales: pd.DataFrame) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['correctas', 'perdidas', 'duplicadas', 'corruptas']
+    lista_anormales = lista_categorias[1:]
 
     intervalo = estimar_intervalo_lecturas(df_lecturas)
     st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
@@ -249,9 +251,11 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
 
+    zona_control.write('Control de lecturas anormales:')
+
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
-        f'Control lecturas duplicadas por [{col_fechahora}]', 
+        f'Duplicadas por [{col_fechahora}]', 
         options=['No modificar', 'Dejar primera', 'Dejar última', 'Borrar'], horizontal=True,
     )
     match control_duplicadas:
@@ -263,7 +267,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
 
     # Control corruptas -----------------------------------------------------------------------
-    control_corruptas = zona_control.radio(f'Control lecturas corruptas en [{col_precipitacion}]', 
+    control_corruptas = zona_control.radio(f'Corruptas en [{col_precipitacion}]', 
         options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
     )
     match control_corruptas:
@@ -275,8 +279,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     # Control de perdidas ---------------------------------------------------------------------
     # Debe ser el último contgrol pues los otros pueden borrar
     control_perdidas = zona_control.radio(
-        'Control de lecturas perdidas',
-        options=['No modificar', 'Asumir cero'], horizontal=True,
+        'Perdidas', options=['No modificar', 'Asumir cero'], horizontal=True,
     )
     match control_perdidas:
         case 'Asumir cero':
@@ -305,7 +308,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
-        'Categorías de lecturas', options=lista_categorias, default=lista_categorias[1:],
+        'Categorías de lecturas', options=lista_categorias, default=lista_anormales,
     )
     zona_categorias.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
@@ -322,6 +325,19 @@ def desplegar_lecturas(df_individuales: pd.DataFrame):
     with zona_detalle_individuales:
         ver_dataframe(df_individuales, 'Detalle lecturas individuales')
 
+    # Verificar si aún quedan valores anormales por procesar ----------------------------------
+    if (suma_columnas[lista_anormales] > 0).any():
+        return None
+    
+    # -----------------------------------------------------------------------------------------
+    return df_individuales
+
+# ---------------------------------------------------------------------------------------------
+def calcular_eventos(df_procesadas: pd.DataFrame):
+    ver_dataframe(df_procesadas)
+
+    return
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -333,8 +349,9 @@ zona_mensajes = st.empty()
 lista_tabs = [
     MENSAJES['tabarchivo'],
     MENSAJES['tablecturas'],
+    MENSAJES['tabeventos']
 ]
-tab_archivo, tab_lecturas = st.tabs(lista_tabs)
+tab_archivo, tab_lecturas, tab_eventos = st.tabs(lista_tabs)
 
 # ---------------------------------------------------------------------------------------------
 df_archivo, nombre_archivo = obtener_archivo_lecturas()
@@ -370,5 +387,13 @@ if (col_precipitacion is None):
 # ---------------------------------------------------------------------------------------------
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
+
 with tab_lecturas:
-    desplegar_lecturas(df_lecturas)
+    df_lecturas_procesadas = desplegar_lecturas(df_lecturas)
+
+with tab_eventos:
+    if df_lecturas_procesadas is None:
+        st.warning('Aún quedan lecturas anormales por controlar.')
+        st.stop()
+
+    calcular_eventos(df_lecturas_procesadas)

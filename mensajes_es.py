@@ -41,8 +41,9 @@ MENSAJES = {
 
     'tabcarga'                : 'Cargar archivo',
     'tabconfig'               : 'Configurar carga',
-    'tablecturas'             : 'Lecturas',
     'tabarchivo'              : 'Archivo',
+    'tablecturas'             : 'Lecturas',
+    'tabeventos'              : 'Eventos',
 
     'previsualarchivo'        : 'Previsualizar registros.',
     'previsualcolnom'         : 'Columna',
