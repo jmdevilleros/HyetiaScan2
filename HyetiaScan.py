@@ -242,40 +242,58 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
     with st.container(border=True):
         zona_categorias, zona_control = st.columns([0.7, 0.3], gap='medium')
-    with st.expander('Detalle de lecturas', expanded=False):
+    with st.expander(MENSAJES['detallelecturas'], expanded=False):
         zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='medium')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    zona_control.write('Control de lecturas anormales:')
+    zona_control.write(MENSAJES['controlanormales'])
 
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
-        f'Duplicadas por [{col_fechahora}]', 
-        options=['No modificar', 'Dejar primera', 'Dejar última', 'Borrar'], horizontal=True,
+        MENSAJES['lecturasduplicadas'], 
+        options=[
+            'No modificar', 
+            'Dejar primera', 
+            'Dejar última', 
+            'Sumar',
+            'Promediar',
+            'Borrar'
+        ], 
+        horizontal=True,
     )
     match control_duplicadas:
         case 'Dejar primera': 
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
         case 'Dejar última':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
+        case 'Sumar':
+            df_individuales = df_individuales.groupby(col_fechahora, as_index=False).agg({
+                col_fechahora     : 'first',
+                col_precipitacion : 'sum',
+            })
+        case 'Promediar':
+            df_individuales = df_individuales.groupby(col_fechahora, as_index=False).agg({
+                col_fechahora     : 'first',
+                col_precipitacion : 'mean',
+            })
         case 'Borrar':
             df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
 
     # Control corruptas -----------------------------------------------------------------------
-    control_corruptas = zona_control.radio(f'Corruptas en [{col_precipitacion}]', 
-        options=['No modificar', 'Asumir cero', 'Borrar'], horizontal=True,
+    control_corruptas = zona_control.radio(
+        MENSAJES['lecturascorruptas'], 
+        options=['No modificar', 'Borrar'], horizontal=True,
     )
     match control_corruptas:
-        case 'Asumir cero':
-            df_individuales[col_precipitacion] = df_individuales[col_precipitacion].clip(lower=0)
         case 'Borrar':
             df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
     # Control de perdidas ---------------------------------------------------------------------
     # Debe ser el último contgrol pues los otros pueden borrar
     control_perdidas = zona_control.radio(
-        'Perdidas', options=['No modificar', 'Asumir cero'], horizontal=True,
+        MENSAJES['lecturasperdidas'], 
+        options=['No modificar', 'Asumir cero'], horizontal=True,
     )
     match control_perdidas:
         case 'Asumir cero':
@@ -286,7 +304,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
                 ).sort_values(by=col_fechahora).reset_index(drop=True)
 
     # Generar datos agrupados según criterio y calcular métricas -------------------------------
-    criterio = zona_grafico_agrupadas.radio('Lecturas agrupadas', 
+    criterio = zona_grafico_agrupadas.radio(MENSAJES['lecturasagrupadas'], 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
     df_agrupado   = agrupar_lecturas(
@@ -304,7 +322,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
-        'Categorías de lecturas', options=lista_categorias, default=lista_anormales,
+        MENSAJES['lecturasanormales'], options=lista_categorias, default=lista_anormales,
     )
     zona_categorias.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
@@ -317,9 +335,9 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
     # Detalle de lecturas ---------------------------------------------------------------------
     with zona_detalle_agrupadas:
-        ver_dataframe(df_agrupado, f'Detalle lecturas agrupadas ({criterio})')
+        ver_dataframe(df_agrupado, MENSAJES['lecturasagrupadas'])
     with zona_detalle_individuales:
-        ver_dataframe(df_individuales, 'Detalle lecturas individuales')
+        ver_dataframe(df_individuales, MENSAJES['lecturasindividuales'])
 
     # Verificar si aún quedan valores anormales por procesar ----------------------------------
     if (suma_columnas[lista_anormales] > 0).any():
@@ -405,7 +423,7 @@ with tab_lecturas:
 # Prcesamiento de eventos ---------------------------------------------------------------------
 with tab_eventos:
     if df_lecturas_procesadas is None:
-        st.warning('Aún quedan lecturas anormales por controlar.')
+        st.warning(MENSAJES['lecturasporcontrolar'])
         st.stop()
 
     calcular_eventos(df_lecturas_procesadas, intervalo)

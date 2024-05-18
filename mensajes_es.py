@@ -51,5 +51,15 @@ MENSAJES = {
     'previsualcantidad'       : 'Cantidad a visualizar',
     'previsualindice'         : 'Índice',
 
-    'lecturasnormalizadas'    : lambda i: f'Lecturas normalizadas a intervalos de {i} minuto{"s" if i > 1 else ""}'
+    'lecturasnormalizadas'    : lambda i: f'Lecturas normalizadas a intervalos de {i} minuto{"s" if i > 1 else ""}',
+    'lecturasporcontrolar'    : 'Aún quedan lecturas anormales por controlar',
+    'lecturasanormales'       : 'Lecturas anormales',
+    'controlanormales'        : 'Control de lecturas anormales',
+    'lecturasduplicadas'      : 'Duplicadas',
+    'lecturascorruptas'       : 'Corruptas',
+    'lecturasperdidas'        : 'Perdidas',
+
+    'detallelecturas'         : 'Detalle de lecturas',
+    'lecturasagrupadas'       : 'Lecturas agrupadas',
+    'lecturasindividuales'    : 'Lecturas individuales',
 }
