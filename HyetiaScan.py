@@ -194,7 +194,7 @@ def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.D
     return df_perdidas
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+#@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
 def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
@@ -243,21 +243,13 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     with st.container(border=True):
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
     with st.container(border=True):
-        zona_categorias, zona_control = st.columns([0.7, 0.3], gap='large')
+        zona_categorias, zona_control = st.columns([0.7, 0.3], gap='medium')
     with st.expander('Detalle de lecturas', expanded=False):
-        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='large')
+        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='medium')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-
     zona_control.write('Control de lecturas anormales:')
-
-    # Control de desfasadas
-    control_desfasadas = zona_control.radio(
-        f'Desfasadas', options=['No modificar', 'Alinear antes', 'Alinear después', 'Borrar'],
-        horizontal=True,
-        disabled=True
-    )
 
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
@@ -340,7 +332,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
 # ---------------------------------------------------------------------------------------------
 def calcular_eventos(df_procesadas: pd.DataFrame, intervalo: float):
-    ver_dataframe(df_procesadas)
+    st.write('Aca cálculo de eventos')
 
     return
 
