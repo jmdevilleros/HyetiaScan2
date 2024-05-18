@@ -194,7 +194,7 @@ def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.D
     return df_perdidas
 
 # ---------------------------------------------------------------------------------------------
-#@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
 def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
@@ -236,8 +236,6 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
     lista_categorias = ['correctas', 'perdidas', 'duplicadas', 'corruptas']
     lista_anormales = lista_categorias[1:]
-
-    st.write(f'Intervalo entre lecturas individuales: {intervalo} minutos')
 
     # Preparar zonas de visualización ---------------------------------------------------------
     with st.container(border=True):
@@ -336,6 +334,13 @@ def calcular_eventos(df_procesadas: pd.DataFrame, intervalo: float):
 
     return
 
+# ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFrame:
+    col_fechahora = df.columns[0]
+    df[col_fechahora] = df[col_fechahora].dt.floor(f'{intervalo_minutos}min')
+    return df
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -358,7 +363,7 @@ if df_archivo is None:
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-zona_descripcion.subheader(nombre_archivo)
+zona_descripcion.write(f'**{nombre_archivo}**')
 with tab_archivo:
     desplegar_archivo(df_archivo)
 
@@ -386,11 +391,18 @@ if (col_precipitacion is None):
 st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 
+# Detectar intervalo y normalizar/alinear lecturas a él ---------------------------------------
 intervalo = estimar_intervalo_lecturas(df_lecturas)
+df_lecturas = normalizar_lecturas(df_lecturas, intervalo)
+zona_mensajes.caption(
+    f'*{MENSAJES["lecturasnormalizadas"](intervalo)}*'
+)
 
+# Procesamiento de lecturas -------------------------------------------------------------------
 with tab_lecturas:
     df_lecturas_procesadas = desplegar_lecturas(df_lecturas, intervalo)
 
+# Prcesamiento de eventos ---------------------------------------------------------------------
 with tab_eventos:
     if df_lecturas_procesadas is None:
         st.warning('Aún quedan lecturas anormales por controlar.')

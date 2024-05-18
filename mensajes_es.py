@@ -50,4 +50,6 @@ MENSAJES = {
     'previsualtipnom'         : 'Tipo',
     'previsualcantidad'       : 'Cantidad a visualizar',
     'previsualindice'         : 'Índice',
+
+    'lecturasnormalizadas'    : lambda i: f'Lecturas normalizadas a intervalos de {i} minuto{"s" if i > 1 else ""}'
 }
