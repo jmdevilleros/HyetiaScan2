@@ -160,13 +160,13 @@ def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def estimar_intervalo_lecturas(df: pd.DataFrame) -> float:
+def estimar_intervalo_lecturas(df: pd.DataFrame) -> int:
     # Calcular intervalo con la moda de los delta_t entre los primeros registros
     try:
         col_t = df.columns[0]
         s_delta_t = pd.to_timedelta(df[col_t].head(1000).diff().fillna(0))
         moda_dt = s_delta_t.mode()[0]
-        intervalo = moda_dt.total_seconds() / 60
+        intervalo = int(moda_dt.total_seconds() / 60)
     except:
         intervalo = 0
     return intervalo
