@@ -354,9 +354,38 @@ def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFram
     return df
 
 # ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def consolidar_lecturas(df: pd.DataFrame) -> pd.DataFrame:
+    # Consolidar lecturas procesadas contiguas. Lecturas de CERO separan.
+
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
+
+    df_consolidadas = df.copy()
+
+    # Crear una columna adicional para marcar los cambios de 0 a otro valor y viceversa
+    df_consolidadas['cambio'] = \
+        (df_consolidadas[col_precipitacion] != 0) != \
+        (df_consolidadas[col_precipitacion] != 0).shift(1)
+    df_consolidadas['grupo'] = df_consolidadas['cambio'].cumsum()
+
+    # Realizar la agregación basada en el grupo
+    df_consolidadas = df_consolidadas.groupby('grupo').agg(
+        inicia    = (col_fechahora, 'first'),
+        termina   = (col_fechahora, 'last'),
+        conteo    = (col_precipitacion, 'count'),
+        acumulado = (col_precipitacion, 'sum'),
+        lecturas  = (col_precipitacion, lambda p: p.tolist()),
+    ).reset_index(drop=True)
+
+    # Agregar coiumna de duracion
+    df_consolidadas['duracion'] = intervalo + \
+        (df_consolidadas['termina'] - df_consolidadas['inicia']).dt.total_seconds() // 60
+    
+    return df_consolidadas
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: float):
-    col_fechahora = df_procesadas.columns[0]
-    col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
     with st.container(border=True):
@@ -370,30 +399,13 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: float):
                 Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
             '''
         )
-
-    df_eventos = df_procesadas.copy()
-
-    # Crear una columna adicional para marcar los cambios de 0 a otro valor y viceversa
-    df_eventos['cambio'] = \
-        (df_eventos[col_precipitacion] != 0) != \
-        (df_eventos[col_precipitacion] != 0).shift(1)
-    df_eventos['grupo'] = df_eventos['cambio'].cumsum()
-
-    # Realizar la agregación basada en el grupo
-    df_eventos = df_eventos.groupby('grupo').agg(
-        inicia    = (col_fechahora, 'first'),
-        termina   = (col_fechahora, 'last'),
-        conteo    = (col_precipitacion, 'count'),
-        acumulado = (col_precipitacion, 'sum'),
-        lecturas  = (col_precipitacion, lambda p: p.tolist()),
-    ).reset_index(drop=True)
-
-    # Agregar coiumna de duracion
-    df_eventos['duracion'] = intervalo + \
-        (df_eventos['termina'] - df_eventos['inicia']).dt.total_seconds() // 60
     
+    df_consolidadas = consolidar_lecturas(df_procesadas)
+
     # Desplegar
-    ver_dataframe(df_eventos, 'Eventos')
+    with st.container(border=True):
+        st.write('Eventos')
+        st.dataframe(df_consolidadas)
 
     return
 
