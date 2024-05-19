@@ -347,17 +347,55 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     return df_individuales
 
 # ---------------------------------------------------------------------------------------------
-def calcular_eventos(df_procesadas: pd.DataFrame, intervalo: float):
-    st.write('Aca cálculo de eventos')
-
-    return
-
-# ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
 def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     df[col_fechahora] = df[col_fechahora].dt.floor(f'{intervalo_minutos}min')
     return df
+
+# ---------------------------------------------------------------------------------------------
+def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: float):
+    col_fechahora = df_procesadas.columns[0]
+    col_precipitacion = df_procesadas.columns[1]
+
+    # Definir zonas de visualización
+    with st.container(border=True):
+        pausa_maxima = st.slider(
+            'Pausa máxima',
+            min_value=0,
+            max_value=120,
+            step=intervalo,
+            help='''
+                Criterio de continuidad en minutos. \n
+                Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
+            '''
+        )
+
+    df_eventos = df_procesadas.copy()
+
+    # Crear una columna adicional para marcar los cambios de 0 a otro valor y viceversa
+    df_eventos['cambio'] = \
+        (df_eventos[col_precipitacion] != 0) != \
+        (df_eventos[col_precipitacion] != 0).shift(1)
+    df_eventos['grupo'] = df_eventos['cambio'].cumsum()
+
+    # Realizar la agregación basada en el grupo
+    df_eventos = df_eventos.groupby('grupo').agg(
+        inicia    = (col_fechahora, 'first'),
+        termina   = (col_fechahora, 'last'),
+        conteo    = (col_precipitacion, 'count'),
+        acumulado = (col_precipitacion, 'sum'),
+        lecturas  = (col_precipitacion, lambda p: p.tolist()),
+    ).reset_index(drop=True)
+
+    # Agregar coiumna de duracion
+    df_eventos['duracion'] = intervalo + \
+        (df_eventos['termina'] - df_eventos['inicia']).dt.total_seconds() // 60
+    
+    # Desplegar
+    ver_dataframe(df_eventos, 'Eventos')
+
+    return
 
 # =============================================================================================
 # Sección principal
@@ -426,4 +464,4 @@ with tab_eventos:
         st.warning(MENSAJES['lecturasporcontrolar'])
         st.stop()
 
-    calcular_eventos(df_lecturas_procesadas, intervalo)
+    desplegar_eventos(df_lecturas_procesadas, intervalo)
