@@ -394,6 +394,7 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
 def calcular_eventos(
         df_consolidadas: pd.DataFrame, 
         pausa_maxima: int, 
+        intensidad_minima: int,
         intervalo: int,
 ) -> pd.DataFrame:
 
@@ -477,7 +478,7 @@ def calcular_eventos(
     #     (df['duracion'] <= duracion_maxima) & \
 
     # # Filtrar por intensidad minima
-    # df = df[(df['intensidad'] >= self.intensidad_minima)]
+    df = df[(df['intensidad'] >= intensidad_minima)]
 
     # Calcular y agregar porcentaje acumulado de mediciones
     df['porcentajes'] = df['lecturas'].apply(calcular_porcentajes)
@@ -516,8 +517,9 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
             min_value=df_procesadas[col_fechahora].min(),
             max_value=df_procesadas[col_fechahora].max(),
         )
-        pausa_maxima = st.slider(
+        pausa_maxima = c1.slider(
             'Pausa máxima',
+            value=intervalo,
             min_value=0,
             max_value=120,
             step=intervalo,
@@ -526,13 +528,18 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
                 Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
             '''
         )
+        intensidad_minima = c2.slider(
+            'Intensidad mínima',
+            min_value=1,
+            max_value=50,
+            step=1,
+        )
     
     df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
-    df_eventos = calcular_eventos(df_consolidadas, pausa_maxima, intervalo)
+    df_eventos = calcular_eventos(df_consolidadas, pausa_maxima, intensidad_minima, intervalo)
 
     # Desplegar
-    with st.container(border=True):
-        st.write('Eventos')
+    if st.toggle('Ver detalle de eventos'):
         st.dataframe(df_eventos)
 
     return
