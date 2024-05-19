@@ -560,6 +560,7 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
 
     # Desplegar
     if st.toggle('Ver detalle de eventos'):
+        st.write(df_eventos.describe(include='all'))
         st.dataframe(df_eventos)
 
     return
