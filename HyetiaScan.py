@@ -393,6 +393,8 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
 # ---------------------------------------------------------------------------------------------
 def calcular_eventos(
         df_consolidadas: pd.DataFrame, 
+        duracion_minima: int,
+        duracion_maxima: int,
         pausa_maxima: int, 
         intensidad_minima: int,
         intervalo: int,
@@ -470,12 +472,11 @@ def calcular_eventos(
 
     # # Filtrar precipitaciones por acumulado
     df = df[
-        (df['acumulado'] != 0)
+        (df['acumulado'] > 0)
     ]
 
     # Filtrar por duracion
-    #     (df['duracion'] >= duracion_minima) & \
-    #     (df['duracion'] <= duracion_maxima) & \
+    df = df[(df['duracion'] >= duracion_minima) & (df['duracion'] <= duracion_maxima)]
 
     # # Filtrar por intensidad minima
     df = df[(df['intensidad'] >= intensidad_minima)]
@@ -517,6 +518,20 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
             min_value=df_procesadas[col_fechahora].min(),
             max_value=df_procesadas[col_fechahora].max(),
         )
+        duracion_minima = c1.slider(
+            'Duración mínima', 
+            value=intervalo,
+            min_value=intervalo, 
+            max_value=1440,
+            step=intervalo,
+        )
+        duracion_maxima = c2.slider(
+            "Duración maxima (minutos)", 
+            value=1440,
+            min_value=intervalo,
+            max_value=1440,
+            step=intervalo,
+        )
         pausa_maxima = c1.slider(
             'Pausa máxima',
             value=intervalo,
@@ -536,7 +551,12 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
         )
     
     df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
-    df_eventos = calcular_eventos(df_consolidadas, pausa_maxima, intensidad_minima, intervalo)
+    df_eventos = calcular_eventos(
+        df_consolidadas, 
+        duracion_minima, duracion_maxima,
+        pausa_maxima, intensidad_minima, 
+        intervalo
+    )
 
     # Desplegar
     if st.toggle('Ver detalle de eventos'):
