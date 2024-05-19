@@ -13,6 +13,7 @@
 # =============================================================================================
 
 import streamlit as st
+import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from io import BytesIO
@@ -355,13 +356,17 @@ def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFram
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=MENSAJES['stcachespinner'])
-def consolidar_lecturas(df: pd.DataFrame) -> pd.DataFrame:
+def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.DataFrame:
     # Consolidar lecturas procesadas contiguas. Lecturas de CERO separan.
 
-    col_fechahora = df.columns[0]
+    col_fechahora     = df.columns[0]
     col_precipitacion = df.columns[1]
+    fecha_inicial     = pd.to_datetime(fecha_inicial)
+    fecha_final       = pd.to_datetime(fecha_final)
 
-    df_consolidadas = df.copy()
+    df_consolidadas = df.loc[
+        (df[col_fechahora] >= fecha_inicial) & (df[col_fechahora] <= fecha_final)
+    ].copy()
 
     # Crear una columna adicional para marcar los cambios de 0 a otro valor y viceversa
     df_consolidadas['cambio'] = \
@@ -384,11 +389,133 @@ def consolidar_lecturas(df: pd.DataFrame) -> pd.DataFrame:
     
     return df_consolidadas
 
+
 # ---------------------------------------------------------------------------------------------
-def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: float):
+def calcular_eventos(
+        df_consolidadas: pd.DataFrame, 
+        pausa_maxima: int, 
+        intervalo: int,
+) -> pd.DataFrame:
+
+    # -----------------------------------------------------------------------------------------
+    def calcular_porcentajes(lecturas, factor=100):
+        return (pd.Series(lecturas).cumsum() * factor / sum(lecturas)).to_list()
+
+    # -----------------------------------------------------------------------------------------
+    def unir_precipitaciones(df: pd.DataFrame, pausa_maxima: int) -> pd.DataFrame:
+        # Unifica precipitaciones según criterio de contiguidad.
+
+        # Columna auxiliar para indicar si un evento es parte de lluvia continua o no
+        # True = Evento es parte de lluvia continua
+        # False = No hay lluvia (duracion > pausa_maxima)
+        df['lluvia'] = \
+            (df['acumulado'] > 0) | ((df['duracion'] <= pausa_maxima) & (df['acumulado'] == 0))
+
+        # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
+        df['secuencia'] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
+
+        return df
+
+    # -----------------------------------------------------------------------------------------
+    def determinar_cuartil_huff(acumulados):
+        
+        # Calcular valor de cuartiles
+        Q = np.percentile(acumulados, [25, 50, 75]).tolist()
+
+        # Calcula las diferencias entre los cuartiles
+        deltas = [
+            Q[0], 
+            Q[1] - Q[0], 
+            Q[2] - Q[1], 
+            100  - Q[2]
+        ]
+
+        # Calcular el índice del mayor delta para usarlo como clasificacion de tipo de curva Huff
+        # El mayor delta indica que en ese lapso el aguacero tuvo su mayor precipitación
+        # enumerate genera tuplas (indice, valor), key indica que max debe 
+        # comparar por el segundo item de la tupla (x[1]), el valor que retorna 
+        # max es una tupla (indice, valor mayor) asi que extraemos el
+        # primer elemento [0], el del indice, para usarlo como categoria de cuartil
+        indice_mayor_delta = max(enumerate(deltas), key=lambda x: x[1])[0]
+
+        # Nombre del cuartil calculado. Empiezan en cero, el nombre debe empezar en 1
+        Qname = f"Q{indice_mayor_delta + 1}"
+
+        return Qname
+
+    # -----------------------------------------------------------------------------------------
+
+    # Consolidar eventos que se consideren contiguos
+    df = unir_precipitaciones(df_consolidadas, pausa_maxima)
+
+    # Realizar la agregación basada en la secuencia de evento
+    df = df.groupby('secuencia').agg(
+        inicia    = ('inicia', 'first'),
+        termina   = ('termina', 'last'),
+        lecturas  = ('lecturas', lambda p: sum(p, [])),
+        acumulado = ('acumulado', 'sum'),
+    )
+
+    # Recalcular columna de duracion
+    df['duracion'] = \
+        (df['termina'] - df['inicia']).dt.total_seconds() // 60 + intervalo
+
+    # Agregar intensidad
+    df['intensidad'] = \
+        60 * df['acumulado'] / df['duracion']
+    
+    # Agregar conteo de mediciones
+    df['conteo'] = df['lecturas'].apply(len)
+
+    # # Filtrar precipitaciones por acumulado
+    df = df[
+        (df['acumulado'] != 0)
+    ]
+
+    # Filtrar por duracion
+    #     (df['duracion'] >= duracion_minima) & \
+    #     (df['duracion'] <= duracion_maxima) & \
+
+    # # Filtrar por intensidad minima
+    # df = df[(df['intensidad'] >= self.intensidad_minima)]
+
+    # Calcular y agregar porcentaje acumulado de mediciones
+    df['porcentajes'] = df['lecturas'].apply(calcular_porcentajes)
+
+    # Calcular y agregar cuartil de Huff
+    df['Q_Huff'] = \
+        df['porcentajes'].apply(determinar_cuartil_huff)
+    
+    # Reordenar columnas
+    df = df[[
+        'inicia', 'termina', 'duracion', 
+        'intensidad', 'acumulado', 'conteo', 
+        'lecturas', 'porcentajes', 'Q_Huff',
+    ]]
+
+    return df.reset_index(drop=True)
+
+# ---------------------------------------------------------------------------------------------
+def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
+    col_fechahora = df_procesadas.columns[0]
+    col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
     with st.container(border=True):
+        st.write('Parámetros')
+        c1, c2 = st.columns(2)
+        primera_fecha = c1.date_input(
+            'Fecha inicial',
+            value=df_procesadas[col_fechahora].min(),
+            min_value=df_procesadas[col_fechahora].min(),
+            max_value=df_procesadas[col_fechahora].max(),
+        )
+        ultima_fecha = c2.date_input(
+            'Fecha final',
+            value=df_procesadas[col_fechahora].max(),
+            min_value=df_procesadas[col_fechahora].min(),
+            max_value=df_procesadas[col_fechahora].max(),
+        )
         pausa_maxima = st.slider(
             'Pausa máxima',
             min_value=0,
@@ -400,12 +527,13 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: float):
             '''
         )
     
-    df_consolidadas = consolidar_lecturas(df_procesadas)
+    df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
+    df_eventos = calcular_eventos(df_consolidadas, pausa_maxima, intervalo)
 
     # Desplegar
     with st.container(border=True):
         st.write('Eventos')
-        st.dataframe(df_consolidadas)
+        st.dataframe(df_eventos)
 
     return
 
