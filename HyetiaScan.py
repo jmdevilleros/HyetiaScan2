@@ -498,57 +498,54 @@ def calcular_eventos(
     return df.reset_index(drop=True)
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
+def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFrame:
     col_fechahora = df_procesadas.columns[0]
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    with st.container(border=True):
-        st.write('Parámetros')
-        c1, c2 = st.columns(2)
-        primera_fecha = c1.date_input(
-            'Fecha inicial',
-            value=df_procesadas[col_fechahora].min(),
-            min_value=df_procesadas[col_fechahora].min(),
-            max_value=df_procesadas[col_fechahora].max(),
-        )
-        ultima_fecha = c2.date_input(
-            'Fecha final',
-            value=df_procesadas[col_fechahora].max(),
-            min_value=df_procesadas[col_fechahora].min(),
-            max_value=df_procesadas[col_fechahora].max(),
-        )
-        duracion_minima = c1.slider(
-            'Duración mínima', 
-            value=intervalo,
-            min_value=intervalo, 
-            max_value=1440,
-            step=intervalo,
-        )
-        duracion_maxima = c2.slider(
-            "Duración maxima (minutos)", 
-            value=1440,
-            min_value=intervalo,
-            max_value=1440,
-            step=intervalo,
-        )
-        pausa_maxima = c1.slider(
-            'Pausa máxima',
-            value=intervalo,
-            min_value=0,
-            max_value=120,
-            step=intervalo,
-            help='''
-                Criterio de continuidad en minutos. \n
-                Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
-            '''
-        )
-        intensidad_minima = c2.slider(
-            'Intensidad mínima',
-            min_value=1,
-            max_value=50,
-            step=1,
-        )
+    primera_fecha = st.date_input(
+        'Fecha inicial',
+        value=df_procesadas[col_fechahora].min(),
+        min_value=df_procesadas[col_fechahora].min(),
+        max_value=df_procesadas[col_fechahora].max(),
+    )
+    ultima_fecha = st.date_input(
+        'Fecha final',
+        value=df_procesadas[col_fechahora].max(),
+        min_value=df_procesadas[col_fechahora].min(),
+        max_value=df_procesadas[col_fechahora].max(),
+    )
+    duracion_minima = st.slider(
+        'Duración mínima', 
+        value=intervalo,
+        min_value=intervalo, 
+        max_value=1440,
+        step=intervalo,
+    )
+    duracion_maxima = st.slider(
+        "Duración maxima (minutos)", 
+        value=1440,
+        min_value=intervalo,
+        max_value=1440,
+        step=intervalo,
+    )
+    pausa_maxima = st.slider(
+        'Pausa máxima',
+        value=intervalo,
+        min_value=0,
+        max_value=120,
+        step=intervalo,
+        help='''
+            Criterio de continuidad en minutos. \n
+            Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
+        '''
+    )
+    intensidad_minima = st.slider(
+        'Intensidad mínima',
+        min_value=1,
+        max_value=50,
+        step=1,
+    )
     
     df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
     df_eventos = calcular_eventos(
@@ -559,10 +556,161 @@ def desplegar_eventos(df_procesadas: pd.DataFrame, intervalo: int):
     )
 
     # Desplegar
-    if st.toggle('Ver detalle de eventos'):
-        st.write(df_eventos.describe(include='all'))
-        st.dataframe(df_eventos)
+    # if st.toggle('Ver detalle de eventos'):
+    #     st.write(df_eventos.describe(include='all'))
+    #     st.dataframe(df_eventos)
 
+    return df_eventos
+
+# ---------------------------------------------------------------------------------------------
+def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles: int):
+
+    # -----------------------------------------------------------------------------------------
+    def calcular_curvas_huff(df, intervalo=5):
+        datos_huff = pd.DataFrame()
+
+        # Generar percentiles a partir de porcentaje_acumulado de aguaceros
+        # Usar intervalo especificado como argumento de la función
+        datos_huff['percentiles'] = df['porcentajes'].apply(
+            lambda p: np.percentile(p, range(intervalo, 101, intervalo))
+        )
+
+        # Determinar cuartil de cada curva
+        datos_huff['Q'] = df['Q_Huff']
+
+        # Calcular curvas Huff como promedio de cada correspondiente valor de percentiles
+        curvas_huff = datos_huff.groupby('Q').agg(
+            {'percentiles': lambda x: np.mean(list(zip(*x)), axis=1)}
+        ).reset_index()
+
+        # Agregar un cero al principio de cada lista en 'percentiles'
+        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+            lambda x: [0] + list(x)
+        )
+
+        return curvas_huff
+
+    # -----------------------------------------------------------------------------------------
+    curvas_huff = calcular_curvas_huff(df_eventos, intervalo=intervalo_percentiles)
+    valores_eje_x = range(0, 101, intervalo_percentiles)
+
+    fig, ax = plt.subplots()#figsize=(4, 4))
+    marcas = "vDo^"
+    for indice, curva in curvas_huff.iterrows():
+        ax.plot(
+            valores_eje_x,
+            list(curva['percentiles']),
+            label=curva['Q'],
+            marker=marcas[indice]
+        )
+
+    ax.set_xticks(range(0, 101, intervalo_percentiles))
+    ax.set_yticks(range(0, 101, 5))
+
+    ax.grid(which='both', linestyle='--', linewidth=0.5)
+    ax.grid(which='minor', linestyle=':', linewidth=0.5)
+
+    ax.set_xlabel('% duración')
+    ax.set_ylabel('% precipitación')
+    
+    legend = ax.legend()
+    legend.get_frame().set_facecolor('lightblue')
+    #legend.get_frame().set_alpha(0)
+
+    #plt.title(f'Curvas de Huff')
+    # pie = generar_piedepagina(datos)
+    # plt.text(100, 5, 
+    #     pie, fontsize=6, ha='right', 
+    #     bbox={'facecolor': 'white', 'alpha': 1, 'pad': 2}
+    # )
+
+    #fig.patch.set_alpha(0)
+    ax.tick_params(axis='x', colors='lightblue')
+    ax.tick_params(axis='y', colors='lightblue')
+    fig.patch.set_facecolor('none')
+    ax.patch.set_facecolor('none')
+
+    ax.xaxis.label.set_color('lightblue')
+    ax.yaxis.label.set_color('lightblue')
+
+    st.pyplot(fig)
+
+    # if st.toggle('Ver valores percentiles'):
+    #     curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+    #         lambda x: [round(i, 2) for i in x]
+    #     )
+    #     st.dataframe(curvas_huff, column_order=('Q', 'percentiles'), hide_index=True)
+
+    return
+
+# ---------------------------------------------------------------------------------------------
+def preparar_curva_frecuencia(ax, df, columna):
+
+    # Curva general
+    valores       = df[[columna]].sort_values(columna, ascending=False)
+    num_valores   = valores.shape[0]
+    porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
+    ax.plot(porcentajes_x, valores, label='General', linestyle='-', linewidth=1.2)
+
+    # Curvas por categoría Huff
+    categorias = df['Q_Huff'].unique()
+    categorias.sort()
+    for categoria in categorias:
+        valores       = df[df['Q_Huff'] == categoria][[columna]].sort_values(columna, ascending=False)
+        num_valores   = valores.shape[0]
+        porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
+        ax.plot(porcentajes_x, valores, label=categoria, linewidth=0.9, linestyle='-.')
+
+    ax.set_ylabel(columna.capitalize())
+    ax.set_xlabel('Probabilidad')
+    
+    legend = ax.legend(fontsize=8)
+    legend.get_frame().set_facecolor('lightblue')
+
+    ax.grid(which='both', linestyle='--', linewidth=0.5)
+    ax.minorticks_on()
+    ax.grid(which='minor', linestyle=':', linewidth=0.5)
+
+
+    ax.tick_params(axis='x', colors='lightblue')
+    ax.tick_params(axis='y', colors='lightblue')
+    ax.patch.set_facecolor('none')
+
+    ax.xaxis.label.set_color('lightblue')
+    ax.yaxis.label.set_color('lightblue')
+
+    return
+
+# ---------------------------------------------------------------------------------------------
+def seccion_graficar_curvas_frecuencia(df_eventos):
+    if df_eventos.shape[0] <= 1:
+        st.warning('Se requieren dos o mas eventos para calcular frecuencias.')
+        return
+    
+    fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2)#, figsize=(8, 8))
+    
+    preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
+    preparar_curva_frecuencia(ax_precipit, df_eventos, 'acumulado')
+
+    #fig.suptitle(f'Curvas de frecuencia {datos.nombre}', fontsize=10, ha='center')
+    #pie = generar_piedepagina(datos)
+    # plt.gcf().text(0.5, -0.125, 
+    #     pie, fontsize=5, ha='center', 
+    #     bbox={'facecolor': 'white', 'alpha': 1, 'pad': 2}
+    # )
+
+    fig.patch.set_facecolor('none')
+    st.pyplot(fig)
+
+    return
+
+# ---------------------------------------------------------------------------------------------
+def desplegar_graficas(df_eventos: pd.DataFrame, intervalo_percentiles: int):
+    c1, c2 = st.columns([0.5, 0.5])
+    with c1:
+        seccion_graficar_curvas_huff(df_eventos, intervalo_percentiles)
+    with c2:
+        seccion_graficar_curvas_frecuencia(df_eventos)
     return
 
 # =============================================================================================
@@ -632,4 +780,14 @@ with tab_eventos:
         st.warning(MENSAJES['lecturasporcontrolar'])
         st.stop()
 
-    desplegar_eventos(df_lecturas_procesadas, intervalo)
+    c1, c2 = st.columns([0.2, 0.8])
+    with c1:
+        df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
+        intervalo_percentiles = st.select_slider(
+            'Intervalo de percentiles',
+            options=[5, 10, 20, 25, 50],
+            value=10,
+        )
+
+    with c2:
+        desplegar_graficas(df_eventos, intervalo_percentiles)
