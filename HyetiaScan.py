@@ -559,11 +559,6 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         intervalo
     )
 
-    # Desplegar
-    # if st.toggle('Ver detalle de eventos'):
-    #     st.write(df_eventos.describe(include='all'))
-    #     st.dataframe(df_eventos)
-
     return df_eventos
 
 # ---------------------------------------------------------------------------------------------
@@ -597,7 +592,8 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     # -----------------------------------------------------------------------------------------
 
     zona_grafico = st.empty()
-    intervalo_percentiles = st.select_slider(
+    c1, c2 = st.columns(2)
+    intervalo_percentiles = c1.select_slider(
         'Intervalo de percentiles',
         options=[5, 10, 20, 25, 50],
         value=10,
@@ -626,32 +622,14 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     ax.set_ylabel('% precipitación')
     
     ax.legend(fontsize=8)
-    # legend.get_frame().set_facecolor('lightblue')
-    #legend.get_frame().set_alpha(0)
-
-    #plt.title(f'Curvas de Huff')
-    # pie = generar_piedepagina(datos)
-    # plt.text(100, 5, 
-    #     pie, fontsize=6, ha='right', 
-    #     bbox={'facecolor': 'white', 'alpha': 1, 'pad': 2}
-    # )
-
-    #fig.patch.set_alpha(0)
-    # ax.tick_params(axis='x', colors='lightblue')
-    # ax.tick_params(axis='y', colors='lightblue')
-    # fig.patch.set_facecolor('none')
-    # ax.patch.set_facecolor('none')
-
-    # ax.xaxis.label.set_color('lightblue')
-    # ax.yaxis.label.set_color('lightblue')
 
     zona_grafico.pyplot(fig)
 
-    # if st.toggle('Ver valores percentiles'):
-    #     curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
-    #         lambda x: [round(i, 2) for i in x]
-    #     )
-    #     st.dataframe(curvas_huff, column_order=('Q', 'percentiles'), hide_index=True)
+    with c2.popover('Ver valores percentiles', use_container_width=True):
+        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+            lambda x: [round(i, 2) for i in x]
+        )
+        st.dataframe(curvas_huff, column_order=('Q', 'percentiles'), hide_index=True)
 
     return
 
