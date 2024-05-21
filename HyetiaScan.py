@@ -835,3 +835,6 @@ with tab_eventos:
         df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
     with c2:
         desplegar_graficas(df_eventos)
+    st.divider()
+    if st.toggle('Ver detalle de eventos'):
+        st.dataframe(df_eventos, use_container_width=True)
