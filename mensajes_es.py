@@ -37,7 +37,6 @@ MENSAJES = {
     'elegirarchivo'           : 'Seleccione archivo de lecturas.',
     'elegircolfechahora'      : 'Seleccione columna de fecha-hora.',
     'elegircolprecipitacion'  : 'Seleccione columna de precipitación.',
-    'columnasok'              : 'Columnas seleccionadas.',
 
     'tabcarga'                : 'Cargar archivo',
     'tabconfig'               : 'Configurar carga',

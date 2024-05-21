@@ -504,7 +504,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    c1, c2 = st.columns(2)
+    c1, c2 = (st, st) #st.columns(2)
     primera_fecha = c1.date_input(
         'Fecha inicial',
         value=df_procesadas[col_fechahora].min(),
@@ -565,7 +565,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     return df_eventos
 
 # ---------------------------------------------------------------------------------------------
-def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles: int):
+def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
     # -----------------------------------------------------------------------------------------
     def calcular_curvas_huff(df, intervalo=5):
@@ -593,10 +593,18 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles
         return curvas_huff
 
     # -----------------------------------------------------------------------------------------
+
+    zona_grafico = st.empty()
+    intervalo_percentiles = st.select_slider(
+        'Intervalo de percentiles',
+        options=[5, 10, 20, 25, 50],
+        value=10,
+    )
+
     curvas_huff = calcular_curvas_huff(df_eventos, intervalo=intervalo_percentiles)
     valores_eje_x = range(0, 101, intervalo_percentiles)
 
-    fig, ax = plt.subplots(figsize=(4, 3))
+    fig, ax = plt.subplots(figsize=(7, 4))
     marcas = "vDo^"
     for indice, curva in curvas_huff.iterrows():
         ax.plot(
@@ -615,8 +623,8 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles
     ax.set_xlabel('% duración')
     ax.set_ylabel('% precipitación')
     
-    legend = ax.legend()
-    legend.get_frame().set_facecolor('lightblue')
+    ax.legend()
+    # legend.get_frame().set_facecolor('lightblue')
     #legend.get_frame().set_alpha(0)
 
     #plt.title(f'Curvas de Huff')
@@ -627,15 +635,15 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles
     # )
 
     #fig.patch.set_alpha(0)
-    ax.tick_params(axis='x', colors='lightblue')
-    ax.tick_params(axis='y', colors='lightblue')
-    fig.patch.set_facecolor('none')
-    ax.patch.set_facecolor('none')
+    # ax.tick_params(axis='x', colors='lightblue')
+    # ax.tick_params(axis='y', colors='lightblue')
+    # fig.patch.set_facecolor('none')
+    # ax.patch.set_facecolor('none')
 
-    ax.xaxis.label.set_color('lightblue')
-    ax.yaxis.label.set_color('lightblue')
+    # ax.xaxis.label.set_color('lightblue')
+    # ax.yaxis.label.set_color('lightblue')
 
-    st.pyplot(fig)
+    zona_grafico.pyplot(fig)
 
     # if st.toggle('Ver valores percentiles'):
     #     curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
@@ -666,20 +674,20 @@ def preparar_curva_frecuencia(ax, df, columna):
     ax.set_ylabel(columna.capitalize())
     ax.set_xlabel('Probabilidad')
     
-    legend = ax.legend(fontsize=8)
-    legend.get_frame().set_facecolor('lightblue')
+    #legend = ax.legend(fontsize=8)
+    #legend.get_frame().set_facecolor('lightblue')
 
     ax.grid(which='both', linestyle='--', linewidth=0.5)
     ax.minorticks_on()
     ax.grid(which='minor', linestyle=':', linewidth=0.5)
 
 
-    ax.tick_params(axis='x', colors='lightblue')
-    ax.tick_params(axis='y', colors='lightblue')
-    ax.patch.set_facecolor('none')
+    # ax.tick_params(axis='x', colors='lightblue')
+    # ax.tick_params(axis='y', colors='lightblue')
+    # ax.patch.set_facecolor('none')
 
-    ax.xaxis.label.set_color('lightblue')
-    ax.yaxis.label.set_color('lightblue')
+    # ax.xaxis.label.set_color('lightblue')
+    # ax.yaxis.label.set_color('lightblue')
 
     return
 
@@ -689,19 +697,12 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
         st.warning('Se requieren dos o mas eventos para calcular frecuencias.')
         return
     
-    fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2)#, figsize=(8, 8))
+    fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
     
     preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
     preparar_curva_frecuencia(ax_precipit, df_eventos, 'acumulado')
 
-    #fig.suptitle(f'Curvas de frecuencia {datos.nombre}', fontsize=10, ha='center')
-    #pie = generar_piedepagina(datos)
-    # plt.gcf().text(0.5, -0.125, 
-    #     pie, fontsize=5, ha='center', 
-    #     bbox={'facecolor': 'white', 'alpha': 1, 'pad': 2}
-    # )
-
-    fig.patch.set_facecolor('none')
+    #fig.patch.set_facecolor('none')
     st.pyplot(fig)
 
     return
@@ -722,6 +723,7 @@ def seccion_graficar_rangos_intensidad(df_eventos):
         st.warning('No hay diferencia de intensidades.')
         return
     
+    zona_grafico = st.empty()
     num_rangos = st.slider(
         'Número de rangos:', 
         value=3,
@@ -765,16 +767,17 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     ax.grid(which='both', linestyle='--', linewidth=0.5, axis='y')
     ax.grid(which='minor', linestyle=':', linewidth=0.5, axis='y')
 
-    st.pyplot(fig)
+    #fig.patch.set_facecolor('none')
+    zona_grafico.pyplot(fig)
 
     return
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_graficas(df_eventos: pd.DataFrame, intervalo_percentiles: int):
+def desplegar_graficas(df_eventos: pd.DataFrame):
     t1, t2, t3 = st.tabs(['Huff', 'Frecuencia', 'Rangos'])
 
     with t1:
-        seccion_graficar_curvas_huff(df_eventos, intervalo_percentiles)
+        seccion_graficar_curvas_huff(df_eventos)
     with t2:
         seccion_graficar_curvas_frecuencia(df_eventos)
     with t3:
@@ -828,7 +831,6 @@ if (col_precipitacion is None):
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
-st.sidebar.success(MENSAJES['columnasok'])
 df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 
 # Detectar intervalo y normalizar/alinear lecturas a él ---------------------------------------
@@ -851,10 +853,5 @@ with tab_eventos:
     c1, c2 = st.columns([0.3, 0.7], gap='large')
     with c1:
         df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
-        intervalo_percentiles = st.select_slider(
-            'Intervalo de percentiles',
-            options=[5, 10, 20, 25, 50],
-            value=10,
-        )
     with c2:
-        desplegar_graficas(df_eventos, intervalo_percentiles)
+        desplegar_graficas(df_eventos)
