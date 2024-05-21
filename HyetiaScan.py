@@ -504,50 +504,52 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    c1, c2 = st.columns(2)
-    primera_fecha = c1.date_input(
-        'Fecha inicial',
-        value=df_procesadas[col_fechahora].min(),
-        min_value=df_procesadas[col_fechahora].min(),
-        max_value=df_procesadas[col_fechahora].max(),
-    )
-    ultima_fecha = c2.date_input(
-        'Fecha final',
-        value=df_procesadas[col_fechahora].max(),
-        min_value=df_procesadas[col_fechahora].min(),
-        max_value=df_procesadas[col_fechahora].max(),
-    )
-    duracion_minima = st.slider(
-        'Duración mínima', 
-        value=20,
-        min_value=intervalo, 
-        max_value=1440,
-        step=intervalo,
-    )
-    duracion_maxima = st.slider(
-        "Duración maxima", 
-        value=1440,
-        min_value=intervalo * 2,
-        max_value=1440,
-        step=intervalo,
-    )
-    pausa_maxima = st.slider(
-        'Pausa máxima',
-        value=intervalo * 2,
-        min_value=0,
-        max_value=120,
-        step=intervalo,
-        help='''
-            Criterio de continuidad en minutos. \n
-            Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
-        '''
-    )
-    intensidad_minima = st.slider(
-        'Intensidad mínima',
-        min_value=3,
-        max_value=50,
-        step=1,
-    )
+    with st.form('Parámetros'):
+        c1, c2 = st.columns(2)
+        primera_fecha = c1.date_input(
+            'Fecha inicial',
+            value=df_procesadas[col_fechahora].min(),
+            min_value=df_procesadas[col_fechahora].min(),
+            max_value=df_procesadas[col_fechahora].max(),
+        )
+        ultima_fecha = c2.date_input(
+            'Fecha final',
+            value=df_procesadas[col_fechahora].max(),
+            min_value=df_procesadas[col_fechahora].min(),
+            max_value=df_procesadas[col_fechahora].max(),
+        )
+        duracion_minima = st.slider(
+            'Duración mínima', 
+            value=20,
+            min_value=intervalo, 
+            max_value=1440,
+            step=intervalo,
+        )
+        duracion_maxima = st.slider(
+            "Duración maxima", 
+            value=1440,
+            min_value=intervalo * 2,
+            max_value=1440,
+            step=intervalo,
+        )
+        pausa_maxima = st.slider(
+            'Pausa máxima',
+            value=intervalo * 2,
+            min_value=0,
+            max_value=120,
+            step=intervalo,
+            help='''
+                Criterio de continuidad en minutos. \n
+                Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
+            '''
+        )
+        intensidad_minima = st.slider(
+            'Intensidad mínima',
+            min_value=3,
+            max_value=50,
+            step=1,
+        )
+        aplicar_parametros = st.form_submit_button('Aplicar parámetros', type='primary')
     
     df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
     df_eventos = calcular_eventos(
