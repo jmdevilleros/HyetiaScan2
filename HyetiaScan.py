@@ -16,6 +16,7 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from math import floor, ceil, trunc
 from io import BytesIO
 import re
 
@@ -706,13 +707,78 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
     return
 
 # ---------------------------------------------------------------------------------------------
+def seccion_graficar_rangos_intensidad(df_eventos):
+    
+    num_aguaceros = df_eventos.shape[0]
+    if num_aguaceros <= 2:
+        st.warning('Requiere mas de dos eventos.')
+        return
+
+    intensidad_min = floor(df_eventos['intensidad'].min())
+    intensidad_max = ceil(df_eventos['intensidad'].max())
+    intensidad_med = (intensidad_max - intensidad_min) // 2
+
+    if intensidad_min == intensidad_max:
+        st.warning('No hay diferencia de intensidades.')
+        return
+    
+    num_rangos = st.slider(
+        'Número de rangos:', 
+        value=3,
+        min_value=2, 
+        max_value=intensidad_med
+    )
+    tamaño_rango = (intensidad_max - intensidad_min) / num_rangos
+    limites_rangos = \
+        [trunc(intensidad_min + i * tamaño_rango) for i in range(num_rangos + 1)]
+    rangos = \
+        [(limites_rangos[i], limites_rangos[i + 1]) for i in range(num_rangos)]
+
+    df = df_eventos[['Q_Huff', 'intensidad']].copy()
+
+    df['rango'] = pd.cut(
+        df_eventos['intensidad'], 
+        bins=limites_rangos,
+        labels=[f'{t}' for t in rangos],
+    )
+
+    conteo_por_categoria = df.groupby(['Q_Huff', 'rango'], observed=False).size()
+    categorias = df['Q_Huff'].unique()
+    categorias.sort()
+    
+    fig, ax = plt.subplots(figsize=(7, 4))
+    colores = ['lightblue', 'cyan', 'blue', 'navy']
+    for i, categoria in enumerate(categorias):
+        ax.bar(
+            [p + i * 0.15 for p in range(num_rangos)], 
+            conteo_por_categoria.loc[categoria],
+            width=0.15,
+            label=categoria,
+            color=colores[i]
+        )
+
+    ax.legend(title='Cuartil', loc='upper left', bbox_to_anchor=(1, 1))
+    ax.set_xticks(range(num_rangos))
+    ax.set_xticklabels(rangos, rotation=45, fontsize=8)
+    ax.set_xlabel('Rangos de intensidad')
+    ax.set_ylabel('Frecuencia')
+    ax.grid(which='both', linestyle='--', linewidth=0.5, axis='y')
+    ax.grid(which='minor', linestyle=':', linewidth=0.5, axis='y')
+
+    st.pyplot(fig)
+
+    return
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_graficas(df_eventos: pd.DataFrame, intervalo_percentiles: int):
-    t1, t2 = st.tabs(['Huff', 'Frecuencia'])
+    t1, t2, t3 = st.tabs(['Huff', 'Frecuencia', 'Rangos'])
 
     with t1:
         seccion_graficar_curvas_huff(df_eventos, intervalo_percentiles)
     with t2:
         seccion_graficar_curvas_frecuencia(df_eventos)
+    with t3:
+        seccion_graficar_rangos_intensidad(df_eventos)
     return
 
 # =============================================================================================
