@@ -504,7 +504,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    c1, c2 = (st, st) #st.columns(2)
+    c1, c2 = st.columns(2)
     primera_fecha = c1.date_input(
         'Fecha inicial',
         value=df_procesadas[col_fechahora].min(),
@@ -517,23 +517,23 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
-    duracion_minima = c1.slider(
+    duracion_minima = st.slider(
         'Duración mínima', 
-        value=intervalo,
+        value=20,
         min_value=intervalo, 
         max_value=1440,
         step=intervalo,
     )
-    duracion_maxima = c2.slider(
+    duracion_maxima = st.slider(
         "Duración maxima", 
         value=1440,
-        min_value=intervalo,
+        min_value=intervalo * 2,
         max_value=1440,
         step=intervalo,
     )
     pausa_maxima = st.slider(
         'Pausa máxima',
-        value=intervalo,
+        value=intervalo * 2,
         min_value=0,
         max_value=120,
         step=intervalo,
@@ -544,7 +544,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     )
     intensidad_minima = st.slider(
         'Intensidad mínima',
-        min_value=1,
+        min_value=3,
         max_value=50,
         step=1,
     )
@@ -623,7 +623,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     ax.set_xlabel('% duración')
     ax.set_ylabel('% precipitación')
     
-    ax.legend()
+    ax.legend(fontsize=8)
     # legend.get_frame().set_facecolor('lightblue')
     #legend.get_frame().set_alpha(0)
 
@@ -674,7 +674,7 @@ def preparar_curva_frecuencia(ax, df, columna):
     ax.set_ylabel(columna.capitalize())
     ax.set_xlabel('Probabilidad')
     
-    #legend = ax.legend(fontsize=8)
+    ax.legend(fontsize=8)
     #legend.get_frame().set_facecolor('lightblue')
 
     ax.grid(which='both', linestyle='--', linewidth=0.5)
@@ -728,7 +728,7 @@ def seccion_graficar_rangos_intensidad(df_eventos):
         'Número de rangos:', 
         value=3,
         min_value=2, 
-        max_value=intensidad_med
+        max_value=10,
     )
     tamaño_rango = (intensidad_max - intensidad_min) / num_rangos
     limites_rangos = \
