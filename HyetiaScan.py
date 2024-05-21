@@ -503,27 +503,28 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    primera_fecha = st.date_input(
+    c1, c2 = st.columns(2)
+    primera_fecha = c1.date_input(
         'Fecha inicial',
         value=df_procesadas[col_fechahora].min(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
-    ultima_fecha = st.date_input(
+    ultima_fecha = c2.date_input(
         'Fecha final',
         value=df_procesadas[col_fechahora].max(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
-    duracion_minima = st.slider(
+    duracion_minima = c1.slider(
         'Duración mínima', 
         value=intervalo,
         min_value=intervalo, 
         max_value=1440,
         step=intervalo,
     )
-    duracion_maxima = st.slider(
-        "Duración maxima (minutos)", 
+    duracion_maxima = c2.slider(
+        "Duración maxima", 
         value=1440,
         min_value=intervalo,
         max_value=1440,
@@ -594,7 +595,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame, intervalo_percentiles
     curvas_huff = calcular_curvas_huff(df_eventos, intervalo=intervalo_percentiles)
     valores_eje_x = range(0, 101, intervalo_percentiles)
 
-    fig, ax = plt.subplots()#figsize=(4, 4))
+    fig, ax = plt.subplots(figsize=(4, 3))
     marcas = "vDo^"
     for indice, curva in curvas_huff.iterrows():
         ax.plot(
@@ -706,10 +707,11 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_graficas(df_eventos: pd.DataFrame, intervalo_percentiles: int):
-    c1, c2 = st.columns([0.5, 0.5])
-    with c1:
+    t1, t2 = st.tabs(['Huff', 'Frecuencia'])
+
+    with t1:
         seccion_graficar_curvas_huff(df_eventos, intervalo_percentiles)
-    with c2:
+    with t2:
         seccion_graficar_curvas_frecuencia(df_eventos)
     return
 
@@ -766,7 +768,7 @@ df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 # Detectar intervalo y normalizar/alinear lecturas a él ---------------------------------------
 intervalo = estimar_intervalo_lecturas(df_lecturas)
 df_lecturas = normalizar_lecturas(df_lecturas, intervalo)
-zona_mensajes.caption(
+st.sidebar.caption(
     f'*{MENSAJES["lecturasnormalizadas"](intervalo)}*'
 )
 
@@ -780,7 +782,7 @@ with tab_eventos:
         st.warning(MENSAJES['lecturasporcontrolar'])
         st.stop()
 
-    c1, c2 = st.columns([0.2, 0.8])
+    c1, c2 = st.columns([0.3, 0.7], gap='large')
     with c1:
         df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
         intervalo_percentiles = st.select_slider(
@@ -788,6 +790,5 @@ with tab_eventos:
             options=[5, 10, 20, 25, 50],
             value=10,
         )
-
     with c2:
         desplegar_graficas(df_eventos, intervalo_percentiles)
