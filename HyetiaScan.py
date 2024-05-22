@@ -522,21 +522,21 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
             'Duración mínima', 
             value=20,
             min_value=intervalo, 
-            max_value=1440,
+            max_value=360,
             step=intervalo,
         )
         duracion_maxima = st.slider(
             "Duración maxima", 
-            value=1440,
+            value=360,
             min_value=intervalo * 2,
-            max_value=1440,
+            max_value=360,
             step=intervalo,
         )
         pausa_maxima = st.slider(
             'Pausa máxima',
             value=intervalo * 2,
             min_value=0,
-            max_value=120,
+            max_value=60,
             step=intervalo,
             help='''
                 Criterio de continuidad en minutos. \n
@@ -545,7 +545,8 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         )
         intensidad_minima = st.slider(
             'Intensidad mínima',
-            min_value=3,
+            value=3,
+            min_value=1,
             max_value=50,
             step=1,
         )
@@ -568,7 +569,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     def calcular_curvas_huff(df, intervalo=5):
         datos_huff = pd.DataFrame()
 
-        # Generar percentiles a partir de porcentaje_acumulado de aguaceros
+        # Generar percentiles a partir de porcentajes de aguaceros
         # Usar intervalo especificado como argumento de la función
         datos_huff['percentiles'] = df['porcentajes'].apply(
             lambda p: np.percentile(p, range(intervalo, 101, intervalo))

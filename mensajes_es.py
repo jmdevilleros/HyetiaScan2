@@ -61,4 +61,6 @@ MENSAJES = {
     'detallelecturas'         : 'Detalle de lecturas',
     'lecturasagrupadas'       : 'Lecturas agrupadas',
     'lecturasindividuales'    : 'Lecturas individuales',
+
+    'precipitacionacumulada'  : 'p_acumulada',
 }
