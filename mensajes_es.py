@@ -44,6 +44,7 @@ MENSAJES = {
     'tablecturas'             : 'Lecturas',
     'tabeventos'              : 'Eventos',
 
+    'tabdetalle'              : 'Detalle',
     'tabhuff'                 : 'Huff',
     'tabfrecuencia'           : 'Frecuencia',
     'tabrangos'               : 'Rangos',

@@ -504,8 +504,8 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    st.write('**Parámetros:**')
-    c1, c2 = st.columns(2)
+    #st.write('**Parámetros:**')
+    c1, c2 = (st, st) #st.columns(2)
     primera_fecha = c1.date_input(
         'Fecha inicial',
         value=df_procesadas[col_fechahora].min(),
@@ -535,8 +535,8 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         step=intervalo,
         help='''
             Criterio de continuidad en minutos. \n
-            Tiempo tope entre precipitaciones para \n
-            considerarlas un solo evento continuo.
+            Tiempo máximo de lecturas en cero para \n
+            considerarlas parte de un evento continuo.
         '''
     )
     intensidad_minima = c2.number_input(
@@ -765,21 +765,25 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
     
     df_acumulados = obtener_acumulados(df)
-    st.write(df_acumulados.describe())
+    st.write('Estadísticas de acumulados')
+    st.dataframe(df_acumulados.describe(), use_container_width=True)
     ver_dataframe(df_acumulados, titulo=MENSAJES['detalleacumulados'])
 
     return
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_graficas(df_eventos: pd.DataFrame):
+def desplegar_info_eventos(df_eventos: pd.DataFrame):
     lista_tabs = [
+        MENSAJES['tabdetalle'],
         MENSAJES['tabhuff'],
         MENSAJES['tabfrecuencia'],
         MENSAJES['tabrangos'],
         MENSAJES['tabacumulados'],
     ]
-    t1, t2, t3, t4 = st.tabs(lista_tabs)
+    t0, t1, t2, t3, t4 = st.tabs(lista_tabs)
 
+    with t0:
+        desplegar_eventos(df_eventos)
     with t1:
         seccion_graficar_curvas_huff(df_eventos)
     with t2:
@@ -793,11 +797,12 @@ def desplegar_graficas(df_eventos: pd.DataFrame):
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_eventos(df: pd.DataFrame):
+    st.write('Estadísticas de eventos')
+    st.dataframe(df.describe(), use_container_width=True)
     columnas_seleccionadas = st.multiselect(
         'Columnas a visualizar',
-        options=df.columns, default=list(df.columns),
+        options=df.columns, default=['inicia', 'duracion', 'P_acumulada', 'intensidad'],
     )
-    st.write(df[columnas_seleccionadas].describe())
     ver_dataframe(df[columnas_seleccionadas], MENSAJES['detalleeventos'])
 
     return
@@ -868,11 +873,8 @@ with tab_eventos:
         st.warning(MENSAJES['lecturasporcontrolar'])
         st.stop()
 
-    c1, c2 = st.columns([0.3, 0.7], gap='large')
+    c1, c2 = st.columns([0.2, 0.8], gap='large')
     with c1:
         df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
     with c2:
-        desplegar_graficas(df_eventos)
-    st.divider()
-
-    desplegar_eventos(df_eventos)
+        desplegar_info_eventos(df_eventos)
