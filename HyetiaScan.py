@@ -175,17 +175,17 @@ def estimar_intervalo_lecturas(df: pd.DataFrame) -> int:
 
 # ---------------------------------------------------------------------------------------------
 def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
-    acumulado  = grupo['sum'][grupo['sum'] > 0].sum()
-    correctas  = grupo['correctas'].sum()
-    perdidas   = grupo['size'][grupo['size'] == 0].count()
-    duplicadas = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
-    corruptas  = grupo['sum'][grupo['sum'] < 0].count()
+    P_acumulada = grupo['sum'][grupo['sum'] > 0].sum()
+    correctas   = grupo['correctas'].sum()
+    perdidas    = grupo['size'][grupo['size'] == 0].count()
+    duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
+    corruptas   = grupo['sum'][grupo['sum'] < 0].count()
     return {
-        'acumulado'  : acumulado, 
-        'correctas'  : correctas, 
-        'perdidas'   : perdidas, 
-        'duplicadas' : duplicadas, 
-        'corruptas'  : corruptas,
+        'P_acumulada'  : P_acumulada, 
+        'correctas'   : correctas, 
+        'perdidas'    : perdidas, 
+        'duplicadas'  : duplicadas, 
+        'corruptas'   : corruptas,
     }
 
 # ---------------------------------------------------------------------------------------------
@@ -320,7 +320,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     ]
 
     # Mostrar gráfico de precipitaciones ------------------------------------------------------
-    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='acumulado')
+    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='P_acumulada')
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
@@ -380,7 +380,7 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
         inicia    = (col_fechahora, 'first'),
         termina   = (col_fechahora, 'last'),
         conteo    = (col_precipitacion, 'count'),
-        acumulado = (col_precipitacion, 'sum'),
+        P_acumulada = (col_precipitacion, 'sum'),
         lecturas  = (col_precipitacion, lambda p: p.tolist()),
     ).reset_index(drop=True)
 
@@ -413,7 +413,7 @@ def calcular_eventos(
         # True = Evento es parte de lluvia continua
         # False = No hay lluvia (duracion > pausa_maxima)
         df['lluvia'] = \
-            (df['acumulado'] > 0) | ((df['duracion'] <= pausa_maxima) & (df['acumulado'] == 0))
+            (df['P_acumulada'] > 0) | ((df['duracion'] <= pausa_maxima) & (df['P_acumulada'] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
         df['secuencia'] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
@@ -457,7 +457,7 @@ def calcular_eventos(
         inicia    = ('inicia', 'first'),
         termina   = ('termina', 'last'),
         lecturas  = ('lecturas', lambda p: sum(p, [])),
-        acumulado = ('acumulado', 'sum'),
+        P_acumulada = ('P_acumulada', 'sum'),
     )
 
     # Recalcular columna de duracion
@@ -466,14 +466,14 @@ def calcular_eventos(
 
     # Agregar intensidad
     df['intensidad'] = \
-        60 * df['acumulado'] / df['duracion']
+        60 * df['P_acumulada'] / df['duracion']
     
     # Agregar conteo de mediciones
     df['conteo'] = df['lecturas'].apply(len)
 
-    # # Filtrar precipitaciones por acumulado
+    # # Filtrar precipitaciones por P_acumulada
     df = df[
-        (df['acumulado'] > 0)
+        (df['P_acumulada'] > 0)
     ]
 
     # Filtrar por duracion
@@ -492,7 +492,7 @@ def calcular_eventos(
     # Reordenar columnas
     df = df[[
         'inicia', 'termina', 'duracion', 
-        'intensidad', 'acumulado', 'conteo', 
+        'intensidad', 'P_acumulada', 'conteo', 
         'lecturas', 'porcentajes', 'Q_Huff',
     ]]
 
@@ -675,7 +675,7 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
     
     preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
-    preparar_curva_frecuencia(ax_precipit, df_eventos, 'acumulado')
+    preparar_curva_frecuencia(ax_precipit, df_eventos, 'P_acumulada')
 
     #fig.patch.set_facecolor('none')
     st.pyplot(fig)

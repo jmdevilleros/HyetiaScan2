@@ -62,5 +62,5 @@ MENSAJES = {
     'lecturasagrupadas'       : 'Lecturas agrupadas',
     'lecturasindividuales'    : 'Lecturas individuales',
 
-    'precipitacionacumulada'  : 'p_acumulada',
+    'pacumulada'              : lambda p: f'{p} acumulada',
 }
