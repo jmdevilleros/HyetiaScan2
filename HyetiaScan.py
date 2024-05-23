@@ -650,19 +650,9 @@ def preparar_curva_frecuencia(ax, df, columna):
     ax.set_xlabel('Probabilidad')
     
     ax.legend(fontsize=8)
-    #legend.get_frame().set_facecolor('lightblue')
-
     ax.grid(which='both', linestyle='--', linewidth=0.5)
     ax.minorticks_on()
     ax.grid(which='minor', linestyle=':', linewidth=0.5)
-
-
-    # ax.tick_params(axis='x', colors='lightblue')
-    # ax.tick_params(axis='y', colors='lightblue')
-    # ax.patch.set_facecolor('none')
-
-    # ax.xaxis.label.set_color('lightblue')
-    # ax.yaxis.label.set_color('lightblue')
 
     return
 
@@ -677,7 +667,6 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
     preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
     preparar_curva_frecuencia(ax_precipit, df_eventos, 'P_acumulada')
 
-    #fig.patch.set_facecolor('none')
     st.pyplot(fig)
 
     return
@@ -692,7 +681,6 @@ def seccion_graficar_rangos_intensidad(df_eventos):
 
     intensidad_min = floor(df_eventos['intensidad'].min())
     intensidad_max = ceil(df_eventos['intensidad'].max())
-    intensidad_med = (intensidad_max - intensidad_min) // 2
 
     if intensidad_min == intensidad_max:
         st.warning('No hay diferencia de intensidades.')
@@ -742,7 +730,6 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     ax.grid(which='both', linestyle='--', linewidth=0.5, axis='y')
     ax.grid(which='minor', linestyle=':', linewidth=0.5, axis='y')
 
-    #fig.patch.set_facecolor('none')
     zona_grafico.pyplot(fig)
 
     return
