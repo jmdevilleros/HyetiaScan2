@@ -746,6 +746,16 @@ def desplegar_graficas(df_eventos: pd.DataFrame):
         seccion_graficar_rangos_intensidad(df_eventos)
     return
 
+# ---------------------------------------------------------------------------------------------
+def desplegar_eventos(df: pd.DataFrame):
+    columnas_seleccionadas = st.multiselect(
+        'Columnas a visualizar',
+        options=df.columns, default=list(df.columns),
+    )
+    ver_dataframe(df[columnas_seleccionadas])
+
+    return
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -818,10 +828,6 @@ with tab_eventos:
     with c2:
         desplegar_graficas(df_eventos)
     st.divider()
+
     if st.toggle('Ver detalle de eventos'):
-        columnas_seleccionadas = st.multiselect(
-            'Columnas a visualizar',
-            options=df_eventos.columns,
-            default=list(df_eventos.columns),
-        )
-        ver_dataframe(df_eventos[columnas_seleccionadas])
+        desplegar_eventos(df_eventos)
