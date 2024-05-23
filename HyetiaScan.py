@@ -504,50 +504,47 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    with st.form('Parámetros'):
-        st.write('**Parámetros:**')
-        c1, c2 = st.columns(2)
-        primera_fecha = c1.date_input(
-            'Fecha inicial',
-            value=df_procesadas[col_fechahora].min(),
-            min_value=df_procesadas[col_fechahora].min(),
-            max_value=df_procesadas[col_fechahora].max(),
-        )
-        ultima_fecha = c2.date_input(
-            'Fecha final',
-            value=df_procesadas[col_fechahora].max(),
-            min_value=df_procesadas[col_fechahora].min(),
-            max_value=df_procesadas[col_fechahora].max(),
-        )
-        duracion_minima = c1.number_input(
-            'Duración mínima', 
-            value=20,
-            min_value=intervalo, 
-        )
-        duracion_maxima = c2.number_input(
-            "Duración maxima", 
-            value=9999,
-            min_value=intervalo,
-        )
-        pausa_maxima = c1.number_input(
-            'Pausa máxima',
-            value=intervalo * 2,
-            min_value=0,
-            step=intervalo,
-            help='''
-                Criterio de continuidad en minutos. \n
-                Tiempo tope entre precipitaciones para considerarlas un solo evento continuo.
-            '''
-        )
-        intensidad_minima = c2.number_input(
-            'Intensidad mínima',
-            value=3,
-            min_value=1,
-            step=1,
-        )
-        aplicar_parametros = st.form_submit_button(
-            'Aplicar parámetros', type='primary', use_container_width=True,
-        )
+    st.write('**Parámetros:**')
+    c1, c2 = st.columns(2)
+    primera_fecha = c1.date_input(
+        'Fecha inicial',
+        value=df_procesadas[col_fechahora].min(),
+        min_value=df_procesadas[col_fechahora].min(),
+        max_value=df_procesadas[col_fechahora].max(),
+    )
+    ultima_fecha = c2.date_input(
+        'Fecha final',
+        value=df_procesadas[col_fechahora].max(),
+        min_value=df_procesadas[col_fechahora].min(),
+        max_value=df_procesadas[col_fechahora].max(),
+    )
+    duracion_minima = c1.number_input(
+        'Duración mínima', 
+        value=20,
+        min_value=intervalo, 
+    )
+    duracion_maxima = c2.number_input(
+        "Duración maxima", 
+        value=9999,
+        min_value=intervalo,
+    )
+    pausa_maxima = c1.number_input(
+        'Pausa máxima',
+        value=intervalo * 2,
+        min_value=0,
+        step=intervalo,
+        help='''
+            Criterio de continuidad en minutos. \n
+            Tiempo tope entre precipitaciones para \n
+            considerarlas un solo evento continuo.
+        '''
+    )
+    intensidad_minima = c2.number_input(
+        'Intensidad mínima',
+        value=3,
+        min_value=1,
+        step=1,
+    )
     
     df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
     df_eventos = calcular_eventos(
