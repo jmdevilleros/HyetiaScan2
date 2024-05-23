@@ -832,4 +832,9 @@ with tab_eventos:
         desplegar_graficas(df_eventos)
     st.divider()
     if st.toggle('Ver detalle de eventos'):
-        st.dataframe(df_eventos, use_container_width=True)
+        columnas_seleccionadas = st.multiselect(
+            'Columnas a visualizar',
+            options=df_eventos.columns,
+            default=list(df_eventos.columns),
+        )
+        ver_dataframe(df_eventos[columnas_seleccionadas])
