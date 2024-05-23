@@ -736,7 +736,12 @@ def seccion_graficar_rangos_intensidad(df_eventos):
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_graficas(df_eventos: pd.DataFrame):
-    t1, t2, t3 = st.tabs(['Huff', 'Frecuencia', 'Rangos'])
+    lista_tabs = [
+        MENSAJES['tabhuff'],
+        MENSAJES['tabfrecuencia'],
+        MENSAJES['tabrangos'],
+    ]
+    t1, t2, t3 = st.tabs(lista_tabs)
 
     with t1:
         seccion_graficar_curvas_huff(df_eventos)
@@ -744,6 +749,7 @@ def desplegar_graficas(df_eventos: pd.DataFrame):
         seccion_graficar_curvas_frecuencia(df_eventos)
     with t3:
         seccion_graficar_rangos_intensidad(df_eventos)
+        
     return
 
 # ---------------------------------------------------------------------------------------------

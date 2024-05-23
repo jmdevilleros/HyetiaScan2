@@ -43,6 +43,9 @@ MENSAJES = {
     'tabarchivo'              : 'Archivo',
     'tablecturas'             : 'Lecturas',
     'tabeventos'              : 'Eventos',
+    'tabhuff'                 : 'Huff',
+    'tabfrecuencia'           : 'Frecuencia',
+    'tabrangos'               : 'Rangos',
 
     'previsualarchivo'        : 'Previsualizar registros.',
     'previsualcolnom'         : 'Columna',
