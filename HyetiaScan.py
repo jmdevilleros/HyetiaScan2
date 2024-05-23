@@ -765,6 +765,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
     
     df_acumulados = obtener_acumulados(df)
+    st.write(df_acumulados.describe())
     ver_dataframe(df_acumulados, titulo=MENSAJES['detalleacumulados'])
 
     return
@@ -796,6 +797,7 @@ def desplegar_eventos(df: pd.DataFrame):
         'Columnas a visualizar',
         options=df.columns, default=list(df.columns),
     )
+    st.write(df[columnas_seleccionadas].describe())
     ver_dataframe(df[columnas_seleccionadas], MENSAJES['detalleeventos'])
 
     return
