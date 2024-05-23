@@ -735,13 +735,49 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     return
 
 # ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
+
+    # -----------------------------------------------------------------------------------------
+    def calcular_acumulados_por_lapso(evento, lapsos):
+        inicia     = evento['inicia']
+        duracion   = evento['duracion']
+        lecturas   = np.array(evento['lecturas'])
+        acumulados = lecturas.cumsum()
+        conteo_lecturas = len(lecturas)
+        intervalo_lecturas = duracion / conteo_lecturas
+        lista_acumulados_por_lapso = [inicia]
+        for lapso in lapsos:
+            conteo_en_lapso = int(lapso / intervalo_lecturas)
+            if (lapso < intervalo_lecturas) or (conteo_en_lapso > conteo_lecturas):
+                lista_acumulados_por_lapso.append(np.nan)
+                continue
+            acumulado_lapso = acumulados[conteo_en_lapso - 1]
+            lista_acumulados_por_lapso.append(acumulado_lapso)
+        return pd.Series(
+            data=lista_acumulados_por_lapso, 
+            index=['inicia', *[f'lapso {d} min' for d in lapsos]],
+        )
+
+    return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[5, 10, 15, 20, 25, 30])
+
+# ---------------------------------------------------------------------------------------------
+def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
+    
+    df_acumulados = obtener_acumulados(df)
+    ver_dataframe(df_acumulados, titulo=MENSAJES['detalleacumulados'])
+
+    return
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_graficas(df_eventos: pd.DataFrame):
     lista_tabs = [
         MENSAJES['tabhuff'],
         MENSAJES['tabfrecuencia'],
         MENSAJES['tabrangos'],
+        MENSAJES['tabacumulados'],
     ]
-    t1, t2, t3 = st.tabs(lista_tabs)
+    t1, t2, t3, t4 = st.tabs(lista_tabs)
 
     with t1:
         seccion_graficar_curvas_huff(df_eventos)
@@ -749,7 +785,9 @@ def desplegar_graficas(df_eventos: pd.DataFrame):
         seccion_graficar_curvas_frecuencia(df_eventos)
     with t3:
         seccion_graficar_rangos_intensidad(df_eventos)
-        
+    with t4:
+        seccion_graficar_acumulados_lapso(df_eventos)
+
     return
 
 # ---------------------------------------------------------------------------------------------
@@ -758,7 +796,7 @@ def desplegar_eventos(df: pd.DataFrame):
         'Columnas a visualizar',
         options=df.columns, default=list(df.columns),
     )
-    ver_dataframe(df[columnas_seleccionadas])
+    ver_dataframe(df[columnas_seleccionadas], MENSAJES['detalleeventos'])
 
     return
 
@@ -835,5 +873,4 @@ with tab_eventos:
         desplegar_graficas(df_eventos)
     st.divider()
 
-    if st.toggle('Ver detalle de eventos'):
-        desplegar_eventos(df_eventos)
+    desplegar_eventos(df_eventos)

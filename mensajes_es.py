@@ -43,9 +43,11 @@ MENSAJES = {
     'tabarchivo'              : 'Archivo',
     'tablecturas'             : 'Lecturas',
     'tabeventos'              : 'Eventos',
+
     'tabhuff'                 : 'Huff',
     'tabfrecuencia'           : 'Frecuencia',
     'tabrangos'               : 'Rangos',
+    'tabacumulados'           : 'Acumulados',
 
     'previsualarchivo'        : 'Previsualizar registros.',
     'previsualcolnom'         : 'Columna',
@@ -62,6 +64,8 @@ MENSAJES = {
     'lecturasperdidas'        : 'Perdidas',
 
     'detallelecturas'         : 'Detalle de lecturas',
+    'detalleeventos'          : 'Detalle de eventos',
+    'detalleacumulados'       : 'Análisis de acumulados',
     'lecturasagrupadas'       : 'Lecturas agrupadas',
     'lecturasindividuales'    : 'Lecturas individuales',
 
