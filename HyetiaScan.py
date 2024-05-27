@@ -759,14 +759,14 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
             index=['inicia', *[f'lapso {d} min' for d in lapsos]],
         )
 
-    return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[5, 10, 15, 20, 25, 30])
+    return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[10, 20, 30, 40, 50, 60, 90, 120])
 
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
     
     df_acumulados = obtener_acumulados(df)
     st.write('Estadísticas de acumulados')
-    st.dataframe(df_acumulados.describe(), use_container_width=True)
+    st.dataframe(df_acumulados.describe(include=np.number), use_container_width=True)
     ver_dataframe(df_acumulados, titulo=MENSAJES['detalleacumulados'])
 
     return
@@ -797,12 +797,13 @@ def desplegar_info_eventos(df_eventos: pd.DataFrame):
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_eventos(df: pd.DataFrame):
+    zona_seleccion = st.empty()
     st.write('Estadísticas de eventos')
-    st.dataframe(df.describe(), use_container_width=True)
-    columnas_seleccionadas = st.multiselect(
+    columnas_seleccionadas = zona_seleccion.multiselect(
         'Columnas a visualizar',
         options=df.columns, default=['inicia', 'duracion', 'P_acumulada', 'intensidad'],
     )
+    st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=False)
     ver_dataframe(df[columnas_seleccionadas], MENSAJES['detalleeventos'])
 
     return
