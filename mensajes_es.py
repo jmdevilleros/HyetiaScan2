@@ -56,6 +56,10 @@ TEXTOS = {
     'previsualcantidad'       : 'Cantidad a visualizar',
     'previsualindice'         : 'Índice',
 
+    'descripciondia'          : 'Dia',
+    'descripcionmes'          : 'Mes',
+    'descripcionano'          : 'Año',
+
     'lecturasnormalizadas'    : lambda i: f'Lecturas normalizadas a intervalos de {i} minuto{"s" if i > 1 else ""}',
     'lecturasporcontrolar'    : 'Aún quedan lecturas anormales por controlar',
     'lecturasanormales'       : 'Lecturas anormales',
@@ -68,11 +72,15 @@ TEXTOS = {
     'controlanormales'        : 'Control de lecturas anormales',
     'detallelecturas'         : 'Detalle de lecturas',
     'detalleeventos'          : 'Detalle de eventos',
-    'detalleacumulados'       : 'Análisis de acumulados',
+    'detalleacumulados'       : 'Detalle de acumulados',
+    'statsacumulados'         : 'Estadísticas de acumulados',
 
     'colpacumulada'           : 'P_acumulada',
     'colcorrectas'            : 'correctas',
     'colperdidas'             : 'perdidas',
     'colduplicadas'           : 'duplicadas',
     'colcorruptas'            : 'corruptas',
+
+    'opcnomodificar'          : 'No modificar',
+    'opcborrar'               : 'Borrar',
 }

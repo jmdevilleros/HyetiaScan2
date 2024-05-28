@@ -235,7 +235,11 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
-    agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
+    agrupaciones = {
+        TEXTOS['descripciondia'] : 'D', 
+        TEXTOS['descripcionmes'] : 'ME', 
+        TEXTOS['descripcionano'] : 'YE',
+    }
     lista_categorias = [
         TEXTOS['colcorrectas'], 
         TEXTOS['colperdidas'], 
@@ -260,7 +264,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     control_duplicadas = zona_control.radio(
         TEXTOS['lecturasduplicadas'], 
         options=[
-            'No modificar', 
+            TEXTOS['opcnomodificar'], 
             'Dejar primera', 
             'Dejar última', 
             'Sumar',
@@ -290,7 +294,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(
         TEXTOS['lecturascorruptas'], 
-        options=['No modificar', 'Borrar'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], 'Borrar'], horizontal=True,
     )
     match control_corruptas:
         case 'Borrar':
@@ -300,7 +304,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Debe ser el último contgrol pues los otros pueden borrar
     control_perdidas = zona_control.radio(
         TEXTOS['lecturasperdidas'], 
-        options=['No modificar', 'Asumir cero'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], 'Asumir cero'], horizontal=True,
     )
     match control_perdidas:
         case 'Asumir cero':
@@ -770,7 +774,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
     
     df_acumulados = obtener_acumulados(df)
-    st.write('Estadísticas de acumulados')
+    st.write(TEXTOS['statsacumulados'])
     st.dataframe(df_acumulados.describe(include=np.number), use_container_width=True)
     ver_dataframe(df_acumulados, titulo=TEXTOS['detalleacumulados'])
 
