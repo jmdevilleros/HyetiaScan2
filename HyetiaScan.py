@@ -20,7 +20,7 @@ from math import floor, ceil, trunc
 from io import BytesIO
 import re
 
-from TEXTOS_es import TEXTOS
+from mensajes_es import TEXTOS
 
 # =============================================================================================
 # Globales
