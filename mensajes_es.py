@@ -8,7 +8,7 @@
 # Archivo: mensajes_es.py - Texto de mensajes en español
 # *********************************************************************************************
 
-MENSAJES = {
+TEXTOS = {
     'appname'                 : 'HyetiaScan',
     'appversion'              : '2.0',
     'appdescription'          : 'Análisis de eventos de precipitación.',
@@ -70,5 +70,9 @@ MENSAJES = {
     'lecturasagrupadas'       : 'Lecturas agrupadas',
     'lecturasindividuales'    : 'Lecturas individuales',
 
-    'pacumulada'              : lambda p: f'{p} acumulada',
+    'colpacumulada'           : 'P_acumulada',
+    'colcorrectas'            : 'correctas',
+    'colperdidas'             : 'perdidas',
+    'colduplicadas'           : 'duplicadas',
+    'colcorruptas'            : 'corruptas',
 }

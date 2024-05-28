@@ -20,7 +20,7 @@ from math import floor, ceil, trunc
 from io import BytesIO
 import re
 
-from mensajes_es import MENSAJES
+from TEXTOS_es import TEXTOS
 
 # =============================================================================================
 # Globales
@@ -35,17 +35,17 @@ def inicializar():
     if 'iniciado' not in st.session_state:
         st.session_state.iniciado = True
         st.set_page_config(
-            page_title=f'{MENSAJES["appname"]} {MENSAJES["appversion"]}', 
+            page_title=f'{TEXTOS["appname"]} {TEXTOS["appversion"]}', 
             layout='wide', 
             initial_sidebar_state='expanded', 
             page_icon=':rain_cloud:',
-            menu_items={'About' : MENSAJES['about']}
+            menu_items={'About' : TEXTOS['about']}
         )
-    st.sidebar.subheader(f':blue[{MENSAJES["appname"]} {MENSAJES["appversion"]}] :rain_cloud:')
-    st.sidebar.caption(MENSAJES['appdescription'])
+    st.sidebar.subheader(f':blue[{TEXTOS["appname"]} {TEXTOS["appversion"]}] :rain_cloud:')
+    st.sidebar.caption(TEXTOS['appdescription'])
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def cargar_archivo_de_cache(archivo: BytesIO, decimal: str, codificacion: str) -> pd.DataFrame:
     try:
         df = pd.read_csv(
@@ -67,29 +67,29 @@ def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:
 
 # ---------------------------------------------------------------------------------------------
 def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
-    tab_carga, tab_config = st.sidebar.tabs([MENSAJES['tabcarga'], MENSAJES['tabconfig']])
+    tab_carga, tab_config = st.sidebar.tabs([TEXTOS['tabcarga'], TEXTOS['tabconfig']])
     with tab_config:
         decimal = st.radio(
-            MENSAJES['elegirdecimal'], 
+            TEXTOS['elegirdecimal'], 
             options=['.', ','], 
             captions=['Punto', 'Coma'],
             horizontal=True,
         )
         codificacion = st.selectbox(
-            MENSAJES['elegircodificacion'],
+            TEXTOS['elegircodificacion'],
             options=['utf-8', 'utf-16', 'utf-32', 'latin-1', 'iso-8859-1', 'ascii'],
         )
         st.divider()
 
     archivo = tab_carga.file_uploader(
-        ' ', type=['csv'], help=MENSAJES['fileuploaderhelp'], label_visibility='collapsed',
+        ' ', type=['csv'], help=TEXTOS['fileuploaderhelp'], label_visibility='collapsed',
     )
     if archivo is None:
         return None, None
     
     df = cargar_archivo_de_cache(archivo, decimal=decimal, codificacion=codificacion)
     if not verificar_lecturas_cargadas(df):
-        st.sidebar.error(MENSAJES['errorlecturas'])
+        st.sidebar.error(TEXTOS['errorlecturas'])
         return None, None
 
     return df, archivo.name
@@ -99,7 +99,7 @@ def elegir_nombre_columna(prompt: str, tipos_validos: list[str], df: pd.DataFram
     lista_columnas = df.select_dtypes(include=tipos_validos).columns
     nombre_col = st.sidebar.selectbox(prompt, lista_columnas, index=0)
     if len(lista_columnas) < 1:
-        st.sidebar.warning(MENSAJES['errortipocols'](tipos_validos))
+        st.sidebar.warning(TEXTOS['errortipocols'](tipos_validos))
         return None
     if nombre_col is None:
         return None
@@ -122,11 +122,11 @@ def buscar_errores_fechahora(df):
 
         valor_fechahora = coincidencia_fechahora.group(1) if coincidencia_fechahora else None
         indice = int(coincidencia_posicion.group(1)) if coincidencia_posicion else None
-        st.error(MENSAJES['errorfechahora'](col, indice, f':orange[{valor_fechahora}]'))
+        st.error(TEXTOS['errorfechahora'](col, indice, f':orange[{valor_fechahora}]'))
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_archivo(df: pd.DataFrame):
-    st.write(MENSAJES['previsualarchivo'])
+    st.write(TEXTOS['previsualarchivo'])
 
     if sum(df.dtypes == 'datetime64') < 1: 
         buscar_errores_fechahora(df) 
@@ -135,8 +135,8 @@ def desplegar_archivo(df: pd.DataFrame):
 
     # Obtener columnas y sus tipos (df.dtypes genera warnings)
     tipos_columna = pd.DataFrame({
-        MENSAJES['previsualcolnom']: df.dtypes.index,
-        MENSAJES['previsualtipnom']: df.dtypes.values.astype(str)
+        TEXTOS['previsualcolnom']: df.dtypes.index,
+        TEXTOS['previsualtipnom']: df.dtypes.values.astype(str)
     })
     c1.dataframe(tipos_columna, hide_index=True, use_container_width=True)
 
@@ -144,7 +144,7 @@ def desplegar_archivo(df: pd.DataFrame):
 
     # Mostrar cantidad de registros deseados
     num_vista = c1.slider(
-        MENSAJES['previsualcantidad'], 
+        TEXTOS['previsualcantidad'], 
         min_value=10, max_value=df.shape[0], 
         value=10, step=int(df.shape[0] / 100) + 1,
         key='num_enarchivo',
@@ -152,16 +152,16 @@ def desplegar_archivo(df: pd.DataFrame):
     c2.dataframe(
         df.head(num_vista), 
         use_container_width=True,
-        column_config={'_index': MENSAJES['previsualindice']},
+        column_config={'_index': TEXTOS['previsualindice']},
     )
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def extraer_lecturas(df: pd.DataFrame, col1: str, col2: str) -> pd.DataFrame:
     return df[[col1, col2]].copy()
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def estimar_intervalo_lecturas(df: pd.DataFrame) -> int:
     # Calcular intervalo con la moda de los delta_t entre los primeros registros
     try:
@@ -176,16 +176,16 @@ def estimar_intervalo_lecturas(df: pd.DataFrame) -> int:
 # ---------------------------------------------------------------------------------------------
 def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
     P_acumulada = grupo['sum'][grupo['sum'] > 0].sum()
-    correctas   = grupo['correctas'].sum()
+    correctas   = grupo[TEXTOS['colcorrectas']].sum()
     perdidas    = grupo['size'][grupo['size'] == 0].count()
     duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
     corruptas   = grupo['sum'][grupo['sum'] < 0].count()
     return {
-        'P_acumulada'  : P_acumulada, 
-        'correctas'   : correctas, 
-        'perdidas'    : perdidas, 
-        'duplicadas'  : duplicadas, 
-        'corruptas'   : corruptas,
+        TEXTOS['colpacumulada']  : P_acumulada, 
+        TEXTOS['colcorrectas']   : correctas, 
+        TEXTOS['colperdidas']    : perdidas, 
+        TEXTOS['colduplicadas']  : duplicadas, 
+        TEXTOS['colcorruptas']   : corruptas,
     }
 
 # ---------------------------------------------------------------------------------------------
@@ -196,7 +196,7 @@ def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.D
     return df_perdidas
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
@@ -207,7 +207,7 @@ def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str
 
     # Agregar columna con lecturas correctas, basadas en evaluar "sum" y "size". 
     # Se vectoriza aparte de la agregación para optimizar velocidad.
-    sec_base['correctas'] =  (sec_base['sum'] >= 0) & (sec_base['size'] == 1)
+    sec_base[TEXTOS['colcorrectas']] =  (sec_base['sum'] >= 0) & (sec_base['size'] == 1)
 
     # Ahora agrupar por intervalo requerido y evaluar estadísticas de cada grupo
     sec_grupo = sec_base.resample(intervalo_grupo).apply(evaluar_grupo_lecturas)
@@ -222,7 +222,7 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
     if titulo:
         st.write(titulo)
     cantidad = st.slider(
-        MENSAJES['previsualcantidad'],
+        TEXTOS['previsualcantidad'],
         min_value=0, 
         max_value=df.shape[0], 
         value=10, 
@@ -236,7 +236,12 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {'Dia' : 'D', 'Mes' : 'ME', 'Año' : 'YE'}
-    lista_categorias = ['correctas', 'perdidas', 'duplicadas', 'corruptas']
+    lista_categorias = [
+        TEXTOS['colcorrectas'], 
+        TEXTOS['colperdidas'], 
+        TEXTOS['colduplicadas'], 
+        TEXTOS['colcorruptas'],
+    ]
     lista_anormales = lista_categorias[1:]
 
     # Preparar zonas de visualización ---------------------------------------------------------
@@ -244,16 +249,16 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
     with st.container(border=True):
         zona_categorias, zona_control = st.columns([0.7, 0.3], gap='medium')
-    with st.expander(MENSAJES['detallelecturas'], expanded=False):
+    with st.expander(TEXTOS['detallelecturas'], expanded=False):
         zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='medium')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    zona_control.write(MENSAJES['controlanormales'])
+    zona_control.write(TEXTOS['controlanormales'])
 
     # Control de duplicadas -------------------------------------------------------------------
     control_duplicadas = zona_control.radio(
-        MENSAJES['lecturasduplicadas'], 
+        TEXTOS['lecturasduplicadas'], 
         options=[
             'No modificar', 
             'Dejar primera', 
@@ -284,7 +289,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
     # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(
-        MENSAJES['lecturascorruptas'], 
+        TEXTOS['lecturascorruptas'], 
         options=['No modificar', 'Borrar'], horizontal=True,
     )
     match control_corruptas:
@@ -294,7 +299,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Control de perdidas ---------------------------------------------------------------------
     # Debe ser el último contgrol pues los otros pueden borrar
     control_perdidas = zona_control.radio(
-        MENSAJES['lecturasperdidas'], 
+        TEXTOS['lecturasperdidas'], 
         options=['No modificar', 'Asumir cero'], horizontal=True,
     )
     match control_perdidas:
@@ -306,7 +311,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
                 ).sort_values(by=col_fechahora).reset_index(drop=True)
 
     # Generar datos agrupados según criterio y calcular métricas -------------------------------
-    criterio = zona_grafico_agrupadas.radio(MENSAJES['lecturasagrupadas'], 
+    criterio = zona_grafico_agrupadas.radio(TEXTOS['lecturasagrupadas'], 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
     df_agrupado   = agrupar_lecturas(
@@ -324,7 +329,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
-        MENSAJES['lecturasanormales'], options=lista_categorias, default=lista_anormales,
+        TEXTOS['lecturasanormales'], options=lista_categorias, default=lista_anormales,
     )
     zona_categorias.bar_chart(df_agrupado, x=col_fechahora, y=categorias_elegidas)
 
@@ -337,9 +342,9 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
 
     # Detalle de lecturas ---------------------------------------------------------------------
     with zona_detalle_agrupadas:
-        ver_dataframe(df_agrupado, MENSAJES['lecturasagrupadas'])
+        ver_dataframe(df_agrupado, TEXTOS['lecturasagrupadas'])
     with zona_detalle_individuales:
-        ver_dataframe(df_individuales, MENSAJES['lecturasindividuales'])
+        ver_dataframe(df_individuales, TEXTOS['lecturasindividuales'])
 
     # Verificar si aún quedan valores anormales por procesar ----------------------------------
     if (suma_columnas[lista_anormales] > 0).any():
@@ -349,14 +354,14 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     return df_individuales
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFrame:
     col_fechahora = df.columns[0]
     df[col_fechahora] = df[col_fechahora].dt.floor(f'{intervalo_minutos}min')
     return df
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.DataFrame:
     # Consolidar lecturas procesadas contiguas. Lecturas de CERO separan.
 
@@ -735,7 +740,7 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     return
 
 # ---------------------------------------------------------------------------------------------
-@st.cache_data(show_spinner=MENSAJES['stcachespinner'])
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
@@ -767,18 +772,18 @@ def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
     df_acumulados = obtener_acumulados(df)
     st.write('Estadísticas de acumulados')
     st.dataframe(df_acumulados.describe(include=np.number), use_container_width=True)
-    ver_dataframe(df_acumulados, titulo=MENSAJES['detalleacumulados'])
+    ver_dataframe(df_acumulados, titulo=TEXTOS['detalleacumulados'])
 
     return
 
 # ---------------------------------------------------------------------------------------------
 def desplegar_info_eventos(df_eventos: pd.DataFrame):
     lista_tabs = [
-        MENSAJES['tabdetalle'],
-        MENSAJES['tabhuff'],
-        MENSAJES['tabfrecuencia'],
-        MENSAJES['tabrangos'],
-        MENSAJES['tabacumulados'],
+        TEXTOS['tabdetalle'],
+        TEXTOS['tabhuff'],
+        TEXTOS['tabfrecuencia'],
+        TEXTOS['tabrangos'],
+        TEXTOS['tabacumulados'],
     ]
     t0, t1, t2, t3, t4 = st.tabs(lista_tabs)
 
@@ -804,7 +809,7 @@ def desplegar_eventos(df: pd.DataFrame):
         options=df.columns, default=['inicia', 'duracion', 'P_acumulada', 'intensidad'],
     )
     st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=False)
-    ver_dataframe(df[columnas_seleccionadas], MENSAJES['detalleeventos'])
+    ver_dataframe(df[columnas_seleccionadas], TEXTOS['detalleeventos'])
 
     return
 
@@ -815,18 +820,18 @@ def desplegar_eventos(df: pd.DataFrame):
 inicializar()
 
 zona_descripcion = st.empty()
-zona_mensajes = st.empty()
+zona_TEXTOS = st.empty()
 lista_tabs = [
-    MENSAJES['tabarchivo'],
-    MENSAJES['tablecturas'],
-    MENSAJES['tabeventos']
+    TEXTOS['tabarchivo'],
+    TEXTOS['tablecturas'],
+    TEXTOS['tabeventos']
 ]
 tab_archivo, tab_lecturas, tab_eventos = st.tabs(lista_tabs)
 
 # ---------------------------------------------------------------------------------------------
 df_archivo, nombre_archivo = obtener_archivo_lecturas()
 if df_archivo is None:
-    zona_mensajes.info(MENSAJES['elegirarchivo'])
+    zona_TEXTOS.info(TEXTOS['elegirarchivo'])
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
@@ -836,22 +841,22 @@ with tab_archivo:
 
 # ---------------------------------------------------------------------------------------------
 col_fechahora = elegir_nombre_columna(
-    prompt=MENSAJES['elegircolfechahora'], 
+    prompt=TEXTOS['elegircolfechahora'], 
     tipos_validos=['datetime64'],
     df=df_archivo,
 )
 if (col_fechahora is None):
-    zona_mensajes.info(MENSAJES['elegircolfechahora'])
+    zona_TEXTOS.info(TEXTOS['elegircolfechahora'])
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
 col_precipitacion = elegir_nombre_columna(
-    prompt=MENSAJES['elegircolprecipitacion'], 
+    prompt=TEXTOS['elegircolprecipitacion'], 
     tipos_validos=['int64', 'float64'],
     df=df_archivo
 )
 if (col_precipitacion is None):
-    zona_mensajes.info(MENSAJES['elegircolprecipitacion'])
+    zona_TEXTOS.info(TEXTOS['elegircolprecipitacion'])
     st.stop()
 
 # ---------------------------------------------------------------------------------------------
@@ -861,7 +866,7 @@ df_lecturas = extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
 intervalo = estimar_intervalo_lecturas(df_lecturas)
 df_lecturas = normalizar_lecturas(df_lecturas, intervalo)
 st.sidebar.caption(
-    f'*{MENSAJES["lecturasnormalizadas"](intervalo)}*'
+    f'*{TEXTOS["lecturasnormalizadas"](intervalo)}*'
 )
 
 # Procesamiento de lecturas -------------------------------------------------------------------
@@ -871,7 +876,7 @@ with tab_lecturas:
 # Prcesamiento de eventos ---------------------------------------------------------------------
 with tab_eventos:
     if df_lecturas_procesadas is None:
-        st.warning(MENSAJES['lecturasporcontrolar'])
+        st.warning(TEXTOS['lecturasporcontrolar'])
         st.stop()
 
     c1, c2 = st.columns([0.2, 0.8], gap='large')
