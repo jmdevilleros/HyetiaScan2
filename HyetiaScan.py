@@ -232,6 +232,29 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
     st.dataframe(df.head(cantidad), hide_index=True, use_container_width=True,)
 
 # ---------------------------------------------------------------------------------------------
+@st.cache_data(show_spinner=TEXTOS['stcachespinner'])
+def controlar_duplicadas(df: pd.DataFrame, control: str) -> pd.DataFrame:
+    match control:
+        case 'Dejar primera': 
+            df = df.drop_duplicates(subset=col_fechahora, keep='first')
+        case 'Dejar última':
+            df = df.drop_duplicates(subset=col_fechahora, keep='last')
+        case 'Sumar':
+            df = df.groupby(col_fechahora, as_index=False).agg({
+                col_fechahora     : 'first',
+                col_precipitacion : 'sum',
+            })
+        case 'Promediar':
+            df = df.groupby(col_fechahora, as_index=False).agg({
+                col_fechahora     : 'first',
+                col_precipitacion : 'mean',
+            })
+        case 'Borrar':
+            df = df.drop_duplicates(subset=col_fechahora, keep=False)
+
+    return df
+
+# ---------------------------------------------------------------------------------------------
 def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
@@ -261,7 +284,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     zona_control.write(TEXTOS['controlanormales'])
 
     # Control de duplicadas -------------------------------------------------------------------
-    control_duplicadas = zona_control.radio(
+    opcion_control_duplicadas = zona_control.radio(
         TEXTOS['lecturasduplicadas'], 
         options=[
             TEXTOS['opcnomodificar'], 
@@ -273,23 +296,8 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         ], 
         horizontal=True,
     )
-    match control_duplicadas:
-        case 'Dejar primera': 
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar última':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Sumar':
-            df_individuales = df_individuales.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'sum',
-            })
-        case 'Promediar':
-            df_individuales = df_individuales.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'mean',
-            })
-        case 'Borrar':
-            df_individuales = df_individuales.drop_duplicates(subset=col_fechahora, keep=False)
+    if opcion_control_duplicadas != TEXTOS['opcnomodificar']:
+        df_individuales = controlar_duplicadas(df_individuales, opcion_control_duplicadas)
 
     # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(
