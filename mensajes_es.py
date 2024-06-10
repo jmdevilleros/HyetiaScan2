@@ -3,7 +3,7 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Mayo 2024
+# Junio 2024
 #
 # Archivo: mensajes_es.py - Texto de mensajes en español
 # *********************************************************************************************
@@ -104,6 +104,7 @@ TEXTOS = {
     'opcdejarultima'          : 'Dejar última', 
     'opcsumar'                : 'Sumar',
     'opcpromediar'            : 'Promediar',
+    'opcasumircero'           : 'Asumir 0 (cero)',
 
 
     'paramfechainicial'       : 'Fecha inicial',

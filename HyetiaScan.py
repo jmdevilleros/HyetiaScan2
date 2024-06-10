@@ -3,7 +3,7 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Mayo 2024
+# Junio 2024
 #
 # Archivo: HyetiaScan.py - Punto de entrada a aplicación Streamlit
 # *********************************************************************************************
@@ -301,25 +301,23 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(
         TEXTOS['lecturascorruptas'], 
-        options=[TEXTOS['opcnomodificar'], 'Borrar'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcborrar']], horizontal=True,
     )
-    match control_corruptas:
-        case 'Borrar':
-            df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
+    if control_corruptas == TEXTOS['opcborrar']:
+        df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
     # Control de perdidas ---------------------------------------------------------------------
     # Debe ser el último contgrol pues los otros pueden borrar
     control_perdidas = zona_control.radio(
         TEXTOS['lecturasperdidas'], 
-        options=[TEXTOS['opcnomodificar'], 'Asumir cero'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcasumircero']], horizontal=True,
     )
-    match control_perdidas:
-        case 'Asumir cero':
-            df_relleno = relleno_perdidas(df_individuales, intervalo=f'{intervalo}min', relleno=0)
-            if not df_relleno.empty:
-                df_individuales = pd.concat(
-                    [df_individuales, df_relleno]
-                ).sort_values(by=col_fechahora).reset_index(drop=True)
+    if control_perdidas == TEXTOS['opcasumircero']:
+        df_relleno = relleno_perdidas(df_individuales, intervalo=f'{intervalo}min', relleno=0)
+        if not df_relleno.empty:
+            df_individuales = pd.concat(
+                [df_individuales, df_relleno]
+            ).sort_values(by=col_fechahora).reset_index(drop=True)
 
     # Generar datos agrupados según criterio y calcular métricas -------------------------------
     criterio = zona_grafico_agrupadas.radio(TEXTOS['lecturasagrupadas'], 
