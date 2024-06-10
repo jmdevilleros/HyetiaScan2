@@ -25,6 +25,12 @@ TEXTOS = {
             de tiempo ordenada, con al menos una columna de fecha/hora (datetime) y
             al menos una columna numérica de precipitación.
             ''',
+    
+    'pausamaximahelp'         : '''
+            Criterio de continuidad en minutos. \n
+            Tiempo máximo de lecturas en cero para \n
+            considerarlas parte de un evento continuo.
+            ''',
 
     'stcachespinner'          : 'Cargando...',
 
@@ -85,6 +91,10 @@ TEXTOS = {
     'coltermina'              : 'termina',
     'colduracion'             : 'duracion',
     'colintensidad'           : 'intensidad',
+    'collecturas'             : 'lecturas',
+    'colsecuencia'            : 'secuencia',
+    'colporcentajes'          : 'porcentajes',
+    'colpercentiles'          : 'percentiles',
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',

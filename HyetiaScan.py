@@ -337,7 +337,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     ]
 
     # Mostrar gráfico de precipitaciones ------------------------------------------------------
-    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='P_acumulada')
+    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y=TEXTOS['colpacumulada'])
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
@@ -402,8 +402,8 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
     ).reset_index(drop=True)
 
     # Agregar coiumna de duracion
-    df_consolidadas['duracion'] = intervalo + \
-        (df_consolidadas['termina'] - df_consolidadas[TEXTOS['colinicia']]).dt.total_seconds() // 60
+    df_consolidadas[TEXTOS['colduracion']] = intervalo + \
+        (df_consolidadas[TEXTOS['coltermina']] - df_consolidadas[TEXTOS['colinicia']]).dt.total_seconds() // 60
     
     return df_consolidadas
 
@@ -430,10 +430,11 @@ def calcular_eventos(
         # True = Evento es parte de lluvia continua
         # False = No hay lluvia (duracion > pausa_maxima)
         df['lluvia'] = \
-            (df['P_acumulada'] > 0) | ((df['duracion'] <= pausa_maxima) & (df['P_acumulada'] == 0))
+            (df[TEXTOS['colpacumulada']] > 0) \
+            | ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
-        df['secuencia'] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
+        df[TEXTOS['colsecuencia']] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
 
         return df
 
@@ -470,47 +471,47 @@ def calcular_eventos(
     df = unir_precipitaciones(df_consolidadas, pausa_maxima)
 
     # Realizar la agregación basada en la secuencia de evento
-    df = df.groupby('secuencia').agg(
+    df = df.groupby(TEXTOS['colsecuencia']).agg(
         inicia    = (TEXTOS['colinicia'], 'first'),
-        termina   = ('termina', 'last'),
-        lecturas  = ('lecturas', lambda p: sum(p, [])),
-        P_acumulada = ('P_acumulada', 'sum'),
+        termina   = (TEXTOS['coltermina'], 'last'),
+        lecturas  = (TEXTOS['collecturas'], lambda p: sum(p, [])),
+        P_acumulada = (TEXTOS['colpacumulada'], 'sum'),
     )
 
     # Recalcular columna de duracion
-    df['duracion'] = \
-        (df['termina'] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60 + intervalo
+    df[TEXTOS['colduracion']] = \
+        (df[TEXTOS['coltermina']] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60 + intervalo
 
     # Agregar intensidad
     df[TEXTOS['colintensidad']] = \
-        60 * df['P_acumulada'] / df['duracion']
+        60 * df[TEXTOS['colpacumulada']] / df[TEXTOS['colduracion']]
     
     # Agregar conteo de mediciones
-    df['conteo'] = df['lecturas'].apply(len)
+    df['conteo'] = df[TEXTOS['collecturas']].apply(len)
 
     # # Filtrar precipitaciones por P_acumulada
     df = df[
-        (df['P_acumulada'] > 0)
+        (df[TEXTOS['colpacumulada']] > 0)
     ]
 
     # Filtrar por duracion
-    df = df[(df['duracion'] >= duracion_minima) & (df['duracion'] <= duracion_maxima)]
+    df = df[(df[TEXTOS['colduracion']] >= duracion_minima) & (df[TEXTOS['colduracion']] <= duracion_maxima)]
 
     # # Filtrar por intensidad minima
     df = df[(df[TEXTOS['colintensidad']] >= intensidad_minima)]
 
     # Calcular y agregar porcentaje acumulado de mediciones
-    df['porcentajes'] = df['lecturas'].apply(calcular_porcentajes)
+    df[TEXTOS['colporcentajes']] = df[TEXTOS['collecturas']].apply(calcular_porcentajes)
 
     # Calcular y agregar cuartil de Huff
     df['Q_Huff'] = \
-        df['porcentajes'].apply(determinar_cuartil_huff)
+        df[TEXTOS['colporcentajes']].apply(determinar_cuartil_huff)
     
     # Reordenar columnas
     df = df[[
-        TEXTOS['colinicia'], 'termina', 'duracion', 
-        TEXTOS['colintensidad'], 'P_acumulada', 'conteo', 
-        'lecturas', 'porcentajes', 'Q_Huff',
+        TEXTOS['colinicia'], TEXTOS['coltermina'], TEXTOS['colduracion'], 
+        TEXTOS['colintensidad'], TEXTOS['colpacumulada'], 'conteo', 
+        TEXTOS['collecturas'], TEXTOS['colporcentajes'], 'Q_Huff',
     ]]
 
     return df.reset_index(drop=True)
@@ -521,7 +522,6 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    #st.write('**Parámetros:**')
     c1, c2 = (st, st) #st.columns(2)
     primera_fecha = c1.date_input(
         TEXTOS['paramfechainicial'],
@@ -550,11 +550,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         value=intervalo * 2,
         min_value=0,
         step=intervalo,
-        help='''
-            Criterio de continuidad en minutos. \n
-            Tiempo máximo de lecturas en cero para \n
-            considerarlas parte de un evento continuo.
-        '''
+        help=TEXTOS['pausamaximahelp'],
     )
     intensidad_minima = c2.number_input(
         TEXTOS['paramintensidadmin'],
@@ -582,7 +578,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
         # Generar percentiles a partir de porcentajes de aguaceros
         # Usar intervalo especificado como argumento de la función
-        datos_huff['percentiles'] = df['porcentajes'].apply(
+        datos_huff[TEXTOS['colpercentiles']] = df[TEXTOS['colporcentajes']].apply(
             lambda p: np.percentile(p, range(intervalo, 101, intervalo))
         )
 
@@ -591,11 +587,11 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
         # Calcular curvas Huff como promedio de cada correspondiente valor de percentiles
         curvas_huff = datos_huff.groupby('Q').agg(
-            {'percentiles': lambda x: np.mean(list(zip(*x)), axis=1)}
+            {TEXTOS['colpercentiles']: lambda x: np.mean(list(zip(*x)), axis=1)}
         ).reset_index()
 
-        # Agregar un cero al principio de cada lista en 'percentiles'
-        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+        # Agregar un cero al principio de cada lista en TEXTOS['colpercentiles']
+        curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [0] + list(x)
         )
 
@@ -619,7 +615,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     for indice, curva in curvas_huff.iterrows():
         ax.plot(
             valores_eje_x,
-            list(curva['percentiles']),
+            list(curva[TEXTOS['colpercentiles']]),
             label=curva['Q'],
             marker=marcas[indice]
         )
@@ -638,10 +634,10 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     zona_grafico.pyplot(fig)
 
     with c2.popover('Ver valores percentiles', use_container_width=True):
-        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+        curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [round(i, 2) for i in x]
         )
-        st.dataframe(curvas_huff, column_order=('Q', 'percentiles'), hide_index=True)
+        st.dataframe(curvas_huff, column_order=('Q', TEXTOS['colpercentiles']), hide_index=True)
 
     return
 
@@ -681,8 +677,8 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
     
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
     
-    preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
-    preparar_curva_frecuencia(ax_precipit, df_eventos, 'P_acumulada')
+    preparar_curva_frecuencia(ax_duracion, df_eventos, TEXTOS['colduracion'])
+    preparar_curva_frecuencia(ax_precipit, df_eventos, TEXTOS['colpacumulada'])
 
     st.pyplot(fig)
 
@@ -759,7 +755,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
     def calcular_acumulados_por_lapso(evento, lapsos):
         inicia     = evento[TEXTOS['colinicia']]
         duracion   = evento[TEXTOS['colduracion']]
-        lecturas   = np.array(evento['lecturas'])
+        lecturas   = np.array(evento[TEXTOS['collecturas']])
         acumulados = lecturas.cumsum()
         conteo_lecturas = len(lecturas)
         intervalo_lecturas = duracion / conteo_lecturas
