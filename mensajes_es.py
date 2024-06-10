@@ -83,4 +83,11 @@ TEXTOS = {
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',
+
+    'paramfechainicial'       : 'Fecha inicial',
+    'paramfechafinal'         : 'Fecha final',
+    'paramduracionmin'        : 'Duración mínima (minutos)',
+    'paramduracionmax'        : 'Duración máxima (minutos)',
+    'parampausamax'           : 'Pausa máxima (minutos)',
+    'paramintensidadmin'      : 'Intensidad mínima (mm/h)',
 }

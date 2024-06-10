@@ -524,29 +524,29 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     #st.write('**Parámetros:**')
     c1, c2 = (st, st) #st.columns(2)
     primera_fecha = c1.date_input(
-        'Fecha inicial',
+        TEXTOS['paramfechainicial'],
         value=df_procesadas[col_fechahora].min(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
     ultima_fecha = c2.date_input(
-        'Fecha final',
+        TEXTOS['paramfechafinal'],
         value=df_procesadas[col_fechahora].max(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
     duracion_minima = c1.number_input(
-        'Duración mínima', 
+        TEXTOS['paramduracionmin'], 
         value=20,
         min_value=intervalo, 
     )
     duracion_maxima = c2.number_input(
-        "Duración maxima", 
+        TEXTOS['paramduracionmax'], 
         value=9999,
         min_value=intervalo,
     )
     pausa_maxima = c1.number_input(
-        'Pausa máxima',
+        TEXTOS['parampausamax'],
         value=intervalo * 2,
         min_value=0,
         step=intervalo,
@@ -557,7 +557,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         '''
     )
     intensidad_minima = c2.number_input(
-        'Intensidad mínima',
+        TEXTOS['paramintensidadmin'],
         value=3,
         min_value=1,
         step=1,
