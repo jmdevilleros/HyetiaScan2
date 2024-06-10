@@ -234,23 +234,22 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def controlar_duplicadas(df: pd.DataFrame, control: str) -> pd.DataFrame:
-    match control:
-        case 'Dejar primera': 
-            df = df.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar última':
-            df = df.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Sumar':
-            df = df.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'sum',
-            })
-        case 'Promediar':
-            df = df.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'mean',
-            })
-        case 'Borrar':
-            df = df.drop_duplicates(subset=col_fechahora, keep=False)
+    if control == TEXTOS['opcdejarprimera']:
+        df = df.drop_duplicates(subset=col_fechahora, keep='first')
+    elif control == TEXTOS['opcdejarultima']:
+        df = df.drop_duplicates(subset=col_fechahora, keep='last')
+    elif control == TEXTOS['opcsumar']:
+        df = df.groupby(col_fechahora, as_index=False).agg({
+            col_fechahora     : 'first',
+            col_precipitacion : 'sum',
+        })
+    elif control == TEXTOS['opcpromediar']:
+        df = df.groupby(col_fechahora, as_index=False).agg({
+            col_fechahora     : 'first',
+            col_precipitacion : 'mean',
+        })
+    elif control == TEXTOS['opcborrar']:
+        df = df.drop_duplicates(subset=col_fechahora, keep=False)
 
     return df
 
@@ -288,11 +287,11 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         TEXTOS['lecturasduplicadas'], 
         options=[
             TEXTOS['opcnomodificar'], 
-            'Dejar primera', 
-            'Dejar última', 
-            'Sumar',
-            'Promediar',
-            'Borrar'
+            TEXTOS['opcdejarprimera'], 
+            TEXTOS['opcdejarultima'], 
+            TEXTOS['opcsumar'],
+            TEXTOS['opcpromediar'],
+            TEXTOS['opcborrar'],
         ], 
         horizontal=True,
     )
@@ -429,12 +428,13 @@ def calcular_eventos(
         # Columna auxiliar para indicar si un evento es parte de lluvia continua o no
         # True = Evento es parte de lluvia continua
         # False = No hay lluvia (duracion > pausa_maxima)
-        df['lluvia'] = \
+        df[TEXTOS['collluvia']] = \
             (df[TEXTOS['colpacumulada']] > 0) \
             | ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
-        df[TEXTOS['colsecuencia']] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
+        df[TEXTOS['colsecuencia']] = \
+            df[TEXTOS['collluvia']].ne(df[TEXTOS['collluvia']].shift()).cumsum()
 
         return df
 
@@ -487,7 +487,7 @@ def calcular_eventos(
         60 * df[TEXTOS['colpacumulada']] / df[TEXTOS['colduracion']]
     
     # Agregar conteo de mediciones
-    df['conteo'] = df[TEXTOS['collecturas']].apply(len)
+    df[TEXTOS['colconteo']] = df[TEXTOS['collecturas']].apply(len)
 
     # # Filtrar precipitaciones por P_acumulada
     df = df[
@@ -510,7 +510,7 @@ def calcular_eventos(
     # Reordenar columnas
     df = df[[
         TEXTOS['colinicia'], TEXTOS['coltermina'], TEXTOS['colduracion'], 
-        TEXTOS['colintensidad'], TEXTOS['colpacumulada'], 'conteo', 
+        TEXTOS['colintensidad'], TEXTOS['colpacumulada'], TEXTOS['colconteo'], 
         TEXTOS['collecturas'], TEXTOS['colporcentajes'], 'Q_Huff',
     ]]
 
@@ -602,7 +602,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     zona_grafico = st.empty()
     c1, c2 = st.columns(2)
     intervalo_percentiles = c1.select_slider(
-        'Intervalo de percentiles',
+        TEXTOS['captionintervalprcntles'],
         options=[5, 10, 20, 25, 50],
         value=10,
     )
@@ -633,7 +633,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
     zona_grafico.pyplot(fig)
 
-    with c2.popover('Ver valores percentiles', use_container_width=True):
+    with c2.popover(TEXTOS['captionverpercentiles'], use_container_width=True):
         curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [round(i, 2) for i in x]
         )

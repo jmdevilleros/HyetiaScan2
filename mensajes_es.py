@@ -95,9 +95,16 @@ TEXTOS = {
     'colsecuencia'            : 'secuencia',
     'colporcentajes'          : 'porcentajes',
     'colpercentiles'          : 'percentiles',
+    'colconteo'               : 'conteo',
+    'collluvia'               : 'lluvia',
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',
+    'opcdejarprimera'         : 'Dejar primera',
+    'opcdejarultima'          : 'Dejar última', 
+    'opcsumar'                : 'Sumar',
+    'opcpromediar'            : 'Promediar',
+
 
     'paramfechainicial'       : 'Fecha inicial',
     'paramfechafinal'         : 'Fecha final',
@@ -108,4 +115,6 @@ TEXTOS = {
 
     'label%duracion'          : '% duración',
     'label%precipitacion'     : '% precipitación',
+    'captionintervalprcntles' : 'Intervalo de percentiles',
+    'captionverpercentiles'   : 'Ver valores percentiles',
 }
