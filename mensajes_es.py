@@ -105,4 +105,7 @@ TEXTOS = {
     'paramduracionmax'        : 'Duración máxima (minutos)',
     'parampausamax'           : 'Pausa máxima (minutos)',
     'paramintensidadmin'      : 'Intensidad mínima (mm/h)',
+
+    'label%duracion'          : '% duración',
+    'label%precipitacion'     : '% precipitación',
 }

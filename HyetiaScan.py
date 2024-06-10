@@ -626,8 +626,8 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     ax.grid(which='both', linestyle='--', linewidth=0.5)
     ax.grid(which='minor', linestyle=':', linewidth=0.5)
 
-    ax.set_xlabel('% duración')
-    ax.set_ylabel('% precipitación')
+    ax.set_xlabel(TEXTOS['label%duracion'])
+    ax.set_ylabel(TEXTOS['label%precipitacion'])
     
     ax.legend(fontsize=8)
 
@@ -654,8 +654,8 @@ def preparar_curva_frecuencia(ax, df, columna):
     categorias = df['Q_Huff'].unique()
     categorias.sort()
     for categoria in categorias:
-        valores       = df[df['Q_Huff'] == categoria][[columna]].sort_values(columna, ascending=False)
-        num_valores   = valores.shape[0]
+        valores = df[df['Q_Huff'] == categoria][[columna]].sort_values(columna, ascending=False)
+        num_valores = valores.shape[0]
         porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
         ax.plot(porcentajes_x, valores, label=categoria, linewidth=0.9, linestyle='-.')
 
