@@ -37,6 +37,8 @@ TEXTOS = {
     'errorlecturas'           : 'Error en archivo seleccionado.',
     'errorfechahora'          : lambda c, i, v: f'Error de formato en columna "{c}", índice {i}: [{v}]',
     'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
+    'errorpocoseventos'       : 'Se requieren dos o mas eventos.',
+    'errorigualintensidad'    : 'No hay diferencia de intensidades',
     
     'elegirdecimal'           : 'Separador decimal',
     'elegircodificacion'      : 'Codificación',
@@ -97,6 +99,7 @@ TEXTOS = {
     'colpercentiles'          : 'percentiles',
     'colconteo'               : 'conteo',
     'collluvia'               : 'lluvia',
+    'colrango'                : 'rango',
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',
@@ -105,7 +108,6 @@ TEXTOS = {
     'opcsumar'                : 'Sumar',
     'opcpromediar'            : 'Promediar',
     'opcasumircero'           : 'Asumir 0 (cero)',
-
 
     'paramfechainicial'       : 'Fecha inicial',
     'paramfechafinal'         : 'Fecha final',
@@ -116,6 +118,13 @@ TEXTOS = {
 
     'label%duracion'          : '% duración',
     'label%precipitacion'     : '% precipitación',
+    'labelprobabilidad'       : 'Probabilidad',
+    'labelrangosintensidad'   : 'Rangos de intensidad',
+    'labelfrecuencia'         : 'Frecuencia',
+
     'captionintervalprcntles' : 'Intervalo de percentiles',
     'captionverpercentiles'   : 'Ver valores percentiles',
+    'captionpunto'            : 'Punto',
+    'captioncoma'             : 'Coma',
+    'captionnumrangos'        : 'Número de rangos',
 }

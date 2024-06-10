@@ -72,7 +72,7 @@ def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
         decimal = st.radio(
             TEXTOS['elegirdecimal'], 
             options=['.', ','], 
-            captions=['Punto', 'Coma'],
+            captions=[TEXTOS['captionpunto'], TEXTOS['captioncoma']],
             horizontal=True,
         )
         codificacion = st.selectbox(
@@ -307,7 +307,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
     # Control de perdidas ---------------------------------------------------------------------
-    # Debe ser el último contgrol pues los otros pueden borrar
+    # Debe ser el último control pues los otros pueden borrar
     control_perdidas = zona_control.radio(
         TEXTOS['lecturasperdidas'], 
         options=[TEXTOS['opcnomodificar'], TEXTOS['opcasumircero']], horizontal=True,
@@ -407,12 +407,12 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
 
 # ---------------------------------------------------------------------------------------------
 def calcular_eventos(
-        df_consolidadas: pd.DataFrame, 
-        duracion_minima: int,
-        duracion_maxima: int,
-        pausa_maxima: int, 
-        intensidad_minima: int,
-        intervalo: int,
+    df_consolidadas: pd.DataFrame, 
+    duracion_minima: int,
+    duracion_maxima: int,
+    pausa_maxima: int, 
+    intensidad_minima: int,
+    intervalo: int,
 ) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
@@ -658,7 +658,7 @@ def preparar_curva_frecuencia(ax, df, columna):
         ax.plot(porcentajes_x, valores, label=categoria, linewidth=0.9, linestyle='-.')
 
     ax.set_ylabel(columna.capitalize())
-    ax.set_xlabel('Probabilidad')
+    ax.set_xlabel(TEXTOS['labelprobabilidad'])
     
     ax.legend(fontsize=8)
     ax.grid(which='both', linestyle='--', linewidth=0.5)
@@ -670,7 +670,7 @@ def preparar_curva_frecuencia(ax, df, columna):
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_curvas_frecuencia(df_eventos):
     if df_eventos.shape[0] <= 1:
-        st.warning('Se requieren dos o mas eventos para calcular frecuencias.')
+        st.warning(TEXTOS['errorpocoseventos'])
         return
     
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
@@ -687,19 +687,19 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     
     num_aguaceros = df_eventos.shape[0]
     if num_aguaceros <= 2:
-        st.warning('Requiere mas de dos eventos.')
+        st.warning(TEXTOS['errorpocoseventos'])
         return
 
     intensidad_min = floor(df_eventos[TEXTOS['colintensidad']].min())
     intensidad_max = ceil(df_eventos[TEXTOS['colintensidad']].max())
 
     if intensidad_min == intensidad_max:
-        st.warning('No hay diferencia de intensidades.')
+        st.warning(TEXTOS['errorigualintensidad'])
         return
     
     zona_grafico = st.empty()
     num_rangos = st.slider(
-        'Número de rangos:', 
+        TEXTOS['captionnumrangos'], 
         value=3,
         min_value=2, 
         max_value=10,
@@ -712,13 +712,13 @@ def seccion_graficar_rangos_intensidad(df_eventos):
 
     df = df_eventos[['Q_Huff', TEXTOS['colintensidad']]].copy()
 
-    df['rango'] = pd.cut(
+    df[TEXTOS['colrango']] = pd.cut(
         df_eventos[TEXTOS['colintensidad']], 
         bins=limites_rangos,
         labels=[f'{t}' for t in rangos],
     )
 
-    conteo_por_categoria = df.groupby(['Q_Huff', 'rango'], observed=False).size()
+    conteo_por_categoria = df.groupby(['Q_Huff', TEXTOS['colrango']], observed=False).size()
     categorias = df['Q_Huff'].unique()
     categorias.sort()
     
@@ -736,8 +736,8 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     ax.legend(title='Cuartil', loc='upper left', bbox_to_anchor=(1, 1))
     ax.set_xticks(range(num_rangos))
     ax.set_xticklabels(rangos, rotation=45, fontsize=8)
-    ax.set_xlabel('Rangos de intensidad')
-    ax.set_ylabel('Frecuencia')
+    ax.set_xlabel(TEXTOS['labelrangosintensidad'])
+    ax.set_ylabel(TEXTOS['labelfrecuencia'])
     ax.grid(which='both', linestyle='--', linewidth=0.5, axis='y')
     ax.grid(which='minor', linestyle=':', linewidth=0.5, axis='y')
 
