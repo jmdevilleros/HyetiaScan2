@@ -818,9 +818,10 @@ def desplegar_eventos(df: pd.DataFrame):
             TEXTOS['colduracion'], 
             TEXTOS['colpacumulada'], 
             TEXTOS['colintensidad'],
+            TEXTOS['colconteo'],
         ],
     )
-    st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=False)
+    st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=True)
     ver_dataframe(df[columnas_seleccionadas], TEXTOS['detalleeventos'])
 
     return
