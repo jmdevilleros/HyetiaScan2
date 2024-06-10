@@ -403,7 +403,7 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
 
     # Agregar coiumna de duracion
     df_consolidadas['duracion'] = intervalo + \
-        (df_consolidadas['termina'] - df_consolidadas['inicia']).dt.total_seconds() // 60
+        (df_consolidadas['termina'] - df_consolidadas[TEXTOS['colinicia']]).dt.total_seconds() // 60
     
     return df_consolidadas
 
@@ -471,7 +471,7 @@ def calcular_eventos(
 
     # Realizar la agregación basada en la secuencia de evento
     df = df.groupby('secuencia').agg(
-        inicia    = ('inicia', 'first'),
+        inicia    = (TEXTOS['colinicia'], 'first'),
         termina   = ('termina', 'last'),
         lecturas  = ('lecturas', lambda p: sum(p, [])),
         P_acumulada = ('P_acumulada', 'sum'),
@@ -479,10 +479,10 @@ def calcular_eventos(
 
     # Recalcular columna de duracion
     df['duracion'] = \
-        (df['termina'] - df['inicia']).dt.total_seconds() // 60 + intervalo
+        (df['termina'] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60 + intervalo
 
     # Agregar intensidad
-    df['intensidad'] = \
+    df[TEXTOS['colintensidad']] = \
         60 * df['P_acumulada'] / df['duracion']
     
     # Agregar conteo de mediciones
@@ -497,7 +497,7 @@ def calcular_eventos(
     df = df[(df['duracion'] >= duracion_minima) & (df['duracion'] <= duracion_maxima)]
 
     # # Filtrar por intensidad minima
-    df = df[(df['intensidad'] >= intensidad_minima)]
+    df = df[(df[TEXTOS['colintensidad']] >= intensidad_minima)]
 
     # Calcular y agregar porcentaje acumulado de mediciones
     df['porcentajes'] = df['lecturas'].apply(calcular_porcentajes)
@@ -508,8 +508,8 @@ def calcular_eventos(
     
     # Reordenar columnas
     df = df[[
-        'inicia', 'termina', 'duracion', 
-        'intensidad', 'P_acumulada', 'conteo', 
+        TEXTOS['colinicia'], 'termina', 'duracion', 
+        TEXTOS['colintensidad'], 'P_acumulada', 'conteo', 
         'lecturas', 'porcentajes', 'Q_Huff',
     ]]
 
@@ -696,8 +696,8 @@ def seccion_graficar_rangos_intensidad(df_eventos):
         st.warning('Requiere mas de dos eventos.')
         return
 
-    intensidad_min = floor(df_eventos['intensidad'].min())
-    intensidad_max = ceil(df_eventos['intensidad'].max())
+    intensidad_min = floor(df_eventos[TEXTOS['colintensidad']].min())
+    intensidad_max = ceil(df_eventos[TEXTOS['colintensidad']].max())
 
     if intensidad_min == intensidad_max:
         st.warning('No hay diferencia de intensidades.')
@@ -716,10 +716,10 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     rangos = \
         [(limites_rangos[i], limites_rangos[i + 1]) for i in range(num_rangos)]
 
-    df = df_eventos[['Q_Huff', 'intensidad']].copy()
+    df = df_eventos[['Q_Huff', TEXTOS['colintensidad']]].copy()
 
     df['rango'] = pd.cut(
-        df_eventos['intensidad'], 
+        df_eventos[TEXTOS['colintensidad']], 
         bins=limites_rangos,
         labels=[f'{t}' for t in rangos],
     )
@@ -757,8 +757,8 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
     def calcular_acumulados_por_lapso(evento, lapsos):
-        inicia     = evento['inicia']
-        duracion   = evento['duracion']
+        inicia     = evento[TEXTOS['colinicia']]
+        duracion   = evento[TEXTOS['colduracion']]
         lecturas   = np.array(evento['lecturas'])
         acumulados = lecturas.cumsum()
         conteo_lecturas = len(lecturas)
@@ -773,7 +773,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
             lista_acumulados_por_lapso.append(acumulado_lapso)
         return pd.Series(
             data=lista_acumulados_por_lapso, 
-            index=['inicia', *[f'lapso {d} min' for d in lapsos]],
+            index=[TEXTOS['colinicia'], *[f'lapso {d} min' for d in lapsos]],
         )
 
     return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[10, 20, 30, 40, 50, 60, 90, 120])
@@ -815,10 +815,16 @@ def desplegar_info_eventos(df_eventos: pd.DataFrame):
 # ---------------------------------------------------------------------------------------------
 def desplegar_eventos(df: pd.DataFrame):
     zona_seleccion = st.empty()
-    st.write('Estadísticas de eventos')
+    st.write(TEXTOS['statseventos'])
     columnas_seleccionadas = zona_seleccion.multiselect(
         'Columnas a visualizar',
-        options=df.columns, default=['inicia', 'duracion', 'P_acumulada', 'intensidad'],
+        options=df.columns, 
+        default=[
+            TEXTOS['colinicia'], 
+            TEXTOS['colduracion'], 
+            TEXTOS['colpacumulada'], 
+            TEXTOS['colintensidad'],
+        ],
     )
     st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=False)
     ver_dataframe(df[columnas_seleccionadas], TEXTOS['detalleeventos'])

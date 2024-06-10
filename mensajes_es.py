@@ -74,12 +74,17 @@ TEXTOS = {
     'detalleeventos'          : 'Detalle de eventos',
     'detalleacumulados'       : 'Detalle de acumulados',
     'statsacumulados'         : 'Estadísticas de acumulados',
+    'statseventos'            : 'Estadísticas de eventos',
 
     'colpacumulada'           : 'P_acumulada',
     'colcorrectas'            : 'correctas',
     'colperdidas'             : 'perdidas',
     'colduplicadas'           : 'duplicadas',
     'colcorruptas'            : 'corruptas',
+    'colinicia'               : 'inicia',
+    'coltermina'              : 'termina',
+    'colduracion'             : 'duracion',
+    'colintensidad'           : 'intensidad',
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',
