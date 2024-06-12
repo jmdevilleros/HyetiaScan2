@@ -121,6 +121,7 @@ TEXTOS = {
     'labelprobabilidad'       : 'Probabilidad',
     'labelrangosintensidad'   : 'Rangos de intensidad',
     'labelfrecuencia'         : 'Frecuencia',
+    'labelgeneral'            : 'General',
 
     'captionintervalprcntles' : 'Intervalo de percentiles',
     'captionverpercentiles'   : 'Ver valores percentiles',

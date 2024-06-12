@@ -640,24 +640,43 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     return
 
 # ---------------------------------------------------------------------------------------------
-def preparar_curva_frecuencia(ax, df, columna):
+def preparar_curva_frecuencia(ax, df, nombrecol, zona):
 
     # Curva general
-    valores       = df[[columna]].sort_values(columna, ascending=False)
-    num_valores   = valores.shape[0]
+    valores       = df[[nombrecol]].sort_values(nombrecol, ascending=False).values.flatten()
+    num_valores   = len(valores)
     porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
-    ax.plot(porcentajes_x, valores, label='General', linestyle='-', linewidth=1.2)
+    ax.plot(porcentajes_x, valores, label=TEXTOS['labelgeneral'], linestyle='-', linewidth=1.2)
+
+    # Tabla general interpolada
+    p_objetivos = np.array(list(range(1, 11)) + list(range(20, 101, 10)))
+    xp = np.array(porcentajes_x)
+    fp = np.array(valores)
+
+    valores_interpolados = np.interp(p_objetivos, xp, fp)
+
+    zona.write(f'{TEXTOS['labelprobabilidad']} (interpolada) vs {nombrecol}')
+    tabla = pd.DataFrame({TEXTOS['labelprobabilidad'] : p_objetivos, nombrecol : valores_interpolados})
+    zona.dataframe(
+        tabla, 
+        hide_index=True, 
+        use_container_width=True,
+        column_config={
+            nombrecol : st.column_config.NumberColumn(format='%.2f'),
+        }
+    )
 
     # Curvas por categoría Huff
     categorias = df['Q_Huff'].unique()
     categorias.sort()
     for categoria in categorias:
-        valores = df[df['Q_Huff'] == categoria][[columna]].sort_values(columna, ascending=False)
+        valores = \
+            df[df['Q_Huff'] == categoria][[nombrecol]].sort_values(nombrecol, ascending=False)
         num_valores = valores.shape[0]
         porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
         ax.plot(porcentajes_x, valores, label=categoria, linewidth=0.9, linestyle='-.')
 
-    ax.set_ylabel(columna.capitalize())
+    ax.set_ylabel(nombrecol.capitalize())
     ax.set_xlabel(TEXTOS['labelprobabilidad'])
     
     ax.legend(fontsize=8)
@@ -673,12 +692,14 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
         st.warning(TEXTOS['errorpocoseventos'])
         return
     
+    zona_graficas = st.empty()
+    zona_tabla1, _, zona_tabla2 = st.columns([0.45, 0.1, 0.45])
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
     
-    preparar_curva_frecuencia(ax_duracion, df_eventos, TEXTOS['colduracion'])
-    preparar_curva_frecuencia(ax_precipit, df_eventos, TEXTOS['colpacumulada'])
+    preparar_curva_frecuencia(ax_duracion, df_eventos, TEXTOS['colduracion'], zona_tabla1)
+    preparar_curva_frecuencia(ax_precipit, df_eventos, TEXTOS['colpacumulada'], zona_tabla2)
 
-    st.pyplot(fig)
+    zona_graficas.pyplot(fig)
 
     return
 
