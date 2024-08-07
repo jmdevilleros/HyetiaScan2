@@ -3,14 +3,14 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Junio 2024
+# Junio - Agosto 2024
 #
 # Archivo: mensajes_es.py - Texto de mensajes en español
 # *********************************************************************************************
 
 TEXTOS = {
     'appname'                 : 'HyetiaScan',
-    'appversion'              : '2.0.1',
+    'appversion'              : '2.0.2',
     'appdescription'          : 'Análisis de eventos de precipitación.',
 
     'about' : '''

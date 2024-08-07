@@ -3,7 +3,7 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Junio 2024
+# Junio - Agosto 2024
 #
 # Archivo: HyetiaScan.py - Punto de entrada a aplicación Streamlit
 # *********************************************************************************************
@@ -371,7 +371,11 @@ def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFram
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
-def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.DataFrame:
+def consolidar_lecturas(
+    df: pd.DataFrame, 
+    fecha_inicial, fecha_final, 
+    intervalo: int,
+) -> pd.DataFrame:
     # Consolidar lecturas procesadas contiguas. Lecturas de CERO separan.
 
     col_fechahora     = df.columns[0]
@@ -399,8 +403,8 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
     ).reset_index(drop=True)
 
     # Agregar coiumna de duracion
-    df_consolidadas[TEXTOS['colduracion']] = intervalo + \
-        (df_consolidadas[TEXTOS['coltermina']] - df_consolidadas[TEXTOS['colinicia']]).dt.total_seconds() // 60
+    lapso = df_consolidadas[TEXTOS['coltermina']] - df_consolidadas[TEXTOS['colinicia']]
+    df_consolidadas[TEXTOS['colduracion']] = intervalo + lapso.dt.total_seconds() // 60
     
     return df_consolidadas
 
@@ -557,7 +561,9 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         step=1,
     )
     
-    df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
+    df_consolidadas = consolidar_lecturas(
+        df_procesadas, primera_fecha, ultima_fecha, intervalo
+    )
     df_eventos = calcular_eventos(
         df_consolidadas, 
         duracion_minima, duracion_maxima,
