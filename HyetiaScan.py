@@ -234,6 +234,8 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def controlar_duplicadas(df: pd.DataFrame, control: str) -> pd.DataFrame:
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
     if control == TEXTOS['opcdejarprimera']:
         df = df.drop_duplicates(subset=col_fechahora, keep='first')
     elif control == TEXTOS['opcdejarultima']:
