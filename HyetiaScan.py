@@ -178,7 +178,7 @@ def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
     P_acumulada = grupo['sum'][grupo['sum'] > 0].sum()
     correctas   = grupo[TEXTOS['colcorrectas']].sum()
     perdidas    = grupo['size'][grupo['size'] == 0].count()
-    duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
+    duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() y no count() p/contar todas
     corruptas   = grupo['sum'][grupo['sum'] < 0].count()
     return {
         TEXTOS['colpacumulada']  : P_acumulada, 
@@ -197,13 +197,19 @@ def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.D
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
-def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
+def agrupar_lecturas(
+    df: pd.DataFrame, 
+    intervalo_base: str, 
+    intervalo_grupo: str,
+) -> pd.DataFrame:
+    
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
 
     # Generar secuencia de tiempo con el mismo intervalo para rellenar posibles vacíos
     # y generar valores de conteo "size" y "sum" para detección de valores anormales.
-    sec_base = df.resample(intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
+    sec_base = df.resample(
+        intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
 
     # Agregar columna con lecturas correctas, basadas en evaluar "sum" y "size". 
     # Se vectoriza aparte de la agregación para optimizar velocidad.
@@ -256,7 +262,7 @@ def controlar_duplicadas(df: pd.DataFrame, control: str) -> pd.DataFrame:
     return df
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.DataFrame : 
+def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {
@@ -275,10 +281,13 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Preparar zonas de visualización ---------------------------------------------------------
     with st.container(border=True):
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
+
     with st.container(border=True):
         zona_categorias, zona_control = st.columns([0.7, 0.3], gap='medium')
+
     with st.expander(TEXTOS['detallelecturas'], expanded=False):
-        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='medium')
+        zona_detalle_agrupadas, zona_detalle_individuales = \
+            st.columns([0.7, 0.3], gap='medium')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
@@ -326,7 +335,9 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
     df_agrupado   = agrupar_lecturas(
-        df_individuales, intervalo_base=f'{intervalo}min', intervalo_grupo=agrupaciones[criterio],
+        df_individuales, 
+        intervalo_base=f'{intervalo}min', 
+        intervalo_grupo=agrupaciones[criterio],
     )
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
@@ -433,8 +444,8 @@ def calcular_eventos(
         # True = Evento es parte de lluvia continua
         # False = No hay lluvia (duracion > pausa_maxima)
         df[TEXTOS['collluvia']] = \
-            (df[TEXTOS['colpacumulada']] > 0) \
-            | ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
+            (df[TEXTOS['colpacumulada']] > 0) | \
+            ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
         df[TEXTOS['colsecuencia']] = \
@@ -456,7 +467,7 @@ def calcular_eventos(
             100  - Q[2]
         ]
 
-        # Calcular el índice del mayor delta para usarlo como clasificacion de tipo de curva Huff
+        # Calcular índice del mayor delta para usarlo como clasificacion de tipo de curva Huff
         # El mayor delta indica que en ese lapso el aguacero tuvo su mayor precipitación
         # enumerate genera tuplas (indice, valor), key indica que max debe 
         # comparar por el segundo item de la tupla (x[1]), el valor que retorna 
@@ -476,15 +487,15 @@ def calcular_eventos(
 
     # Realizar la agregación basada en la secuencia de evento
     df = df.groupby(TEXTOS['colsecuencia']).agg(
-        inicia    = (TEXTOS['colinicia'], 'first'),
-        termina   = (TEXTOS['coltermina'], 'last'),
-        lecturas  = (TEXTOS['collecturas'], lambda p: sum(p, [])),
+        inicia      = (TEXTOS['colinicia'], 'first'),
+        termina     = (TEXTOS['coltermina'], 'last'),
+        lecturas    = (TEXTOS['collecturas'], lambda p: sum(p, [])),
         P_acumulada = (TEXTOS['colpacumulada'], 'sum'),
     )
 
     # Recalcular columna de duracion
-    df[TEXTOS['colduracion']] = \
-        (df[TEXTOS['coltermina']] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60 + intervalo
+    df[TEXTOS['colduracion']] = intervalo + \
+        (df[TEXTOS['coltermina']] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60
 
     # Agregar intensidad
     df[TEXTOS['colintensidad']] = \
@@ -499,7 +510,10 @@ def calcular_eventos(
     ]
 
     # Filtrar por duracion
-    df = df[(df[TEXTOS['colduracion']] >= duracion_minima) & (df[TEXTOS['colduracion']] <= duracion_maxima)]
+    df = df[
+        (df[TEXTOS['colduracion']] >= duracion_minima) & \
+        (df[TEXTOS['colduracion']] <= duracion_maxima)
+    ]
 
     # # Filtrar por intensidad minima
     df = df[(df[TEXTOS['colintensidad']] >= intensidad_minima)]
@@ -643,7 +657,11 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
         curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [round(i, 2) for i in x]
         )
-        st.dataframe(curvas_huff, column_order=('Q', TEXTOS['colpercentiles']), hide_index=True)
+        st.dataframe(
+            curvas_huff, 
+            column_order=('Q', TEXTOS['colpercentiles']), 
+            hide_index=True,
+        )
 
     return
 
@@ -664,7 +682,11 @@ def preparar_curva_frecuencia(ax, df, nombrecol, zona):
     valores_interpolados = np.interp(p_objetivos, xp, fp)
 
     zona.write(f'{TEXTOS['labelprobabilidad']} (interpolada) vs {nombrecol}')
-    tabla = pd.DataFrame({TEXTOS['labelprobabilidad'] : p_objetivos, nombrecol : valores_interpolados})
+    tabla = pd.DataFrame({
+        TEXTOS['labelprobabilidad'] : p_objetivos, 
+        nombrecol : valores_interpolados,
+    })
+
     zona.dataframe(
         tabla, 
         hide_index=True, 
@@ -799,7 +821,13 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
             index=[TEXTOS['colinicia'], *[f'lapso {d} min' for d in lapsos]],
         )
 
-    return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[10, 20, 30, 40, 50, 60, 90, 120])
+    resultado = df.apply(
+        calcular_acumulados_por_lapso, 
+        axis=1, 
+        lapsos=[10, 20, 30, 40, 50, 60, 90, 120],
+    )
+
+    return resultado
 
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
@@ -850,7 +878,10 @@ def desplegar_eventos(df: pd.DataFrame):
             TEXTOS['colconteo'],
         ],
     )
-    st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=True)
+    st.dataframe(
+        df[columnas_seleccionadas].describe(include=np.number), 
+        use_container_width=True,
+    )
     ver_dataframe(df[columnas_seleccionadas], TEXTOS['detalleeventos'])
 
     return
