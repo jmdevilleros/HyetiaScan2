@@ -6,6 +6,7 @@ textColor="#d7ebef"
 
 [server]
 maxUploadSize = 300
+baseUrlPath = "/analysis"
 
 [browser]
 gatherUsageStats = false

@@ -10,7 +10,7 @@
 
 TEXTOS = {
     'appname'                 : 'HyetiaScan',
-    'appversion'              : '2.0.2',
+    'appversion'              : '2.1.0',
     'appdescription'          : 'Análisis de eventos de precipitación.',
 
     'about' : '''
