@@ -180,12 +180,15 @@ def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
     perdidas    = grupo['size'][grupo['size'] == 0].count()
     duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() y no count() p/contar todas
     corruptas   = grupo['sum'][grupo['sum'] < 0].count()
+    atipicas    = grupo[TEXTOS['colatipicas']].sum()
+
     return {
-        TEXTOS['colpacumulada']  : P_acumulada, 
-        TEXTOS['colcorrectas']   : correctas, 
-        TEXTOS['colperdidas']    : perdidas, 
-        TEXTOS['colduplicadas']  : duplicadas, 
-        TEXTOS['colcorruptas']   : corruptas,
+        TEXTOS['colpacumulada'] : P_acumulada, 
+        TEXTOS['colcorrectas']  : correctas, 
+        TEXTOS['colperdidas']   : perdidas, 
+        TEXTOS['colduplicadas'] : duplicadas, 
+        TEXTOS['colcorruptas']  : corruptas,
+        TEXTOS['colatipicas']   : atipicas, 
     }
 
 # ---------------------------------------------------------------------------------------------
@@ -201,6 +204,7 @@ def agrupar_lecturas(
     df: pd.DataFrame, 
     intervalo_base: str, 
     intervalo_grupo: str,
+    umbral_precipitacion : float = 600.0,
 ) -> pd.DataFrame:
     
     col_fechahora = df.columns[0]
@@ -210,13 +214,28 @@ def agrupar_lecturas(
     # y generar valores de conteo "size" y "sum" para detección de valores anormales.
     sec_base = df.resample(
         intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
-
+    
     # Agregar columna con lecturas correctas, basadas en evaluar "sum" y "size". 
     # Se vectoriza aparte de la agregación para optimizar velocidad.
-    sec_base[TEXTOS['colcorrectas']] =  (sec_base['sum'] >= 0) & (sec_base['size'] == 1)
+    sec_base[TEXTOS['colcorrectas']] = \
+        (sec_base['sum'] >= 0) & (sec_base['sum'] <= umbral_precipitacion) \
+        & (sec_base['size'] == 1) 
+
+    # Agregar columna con número de lecturas atípicas según parámetro (inicialmente 600)
+    sec_base[TEXTOS['colatipicas']] = \
+        (sec_base['sum'] > umbral_precipitacion) & (sec_base['size'] == 1)
+
+    # print('-' * 80)
+    # print('sec_base') 
+    # print(sec_base.head())
 
     # Ahora agrupar por intervalo requerido y evaluar estadísticas de cada grupo
     sec_grupo = sec_base.resample(intervalo_grupo).apply(evaluar_grupo_lecturas)
+
+    # print('-' * 80)
+    # print('sec_grupo')
+    # for r in sec_grupo[1:30]:
+    #     print(r)
 
     # Convertir serie en DataFrame
     df_resultado = sec_grupo.apply(lambda row: pd.Series(row)).reset_index()
@@ -275,6 +294,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.Data
         TEXTOS['colperdidas'], 
         TEXTOS['colduplicadas'], 
         TEXTOS['colcorruptas'],
+        TEXTOS['colatipicas'],
     ]
     lista_anormales = lista_categorias[1:]
 
@@ -291,7 +311,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.Data
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    zona_control.write(TEXTOS['controlanormales'])
+    zona_control.subheader(TEXTOS['controlanormales'])
 
     # Control de duplicadas -------------------------------------------------------------------
     opcion_control_duplicadas = zona_control.radio(
@@ -317,6 +337,21 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.Data
     if control_corruptas == TEXTOS['opcborrar']:
         df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
 
+    # Control de atípicas ---------------------------------------------------------------------
+    zc1, zc2 = zona_control.columns(2)
+    control_atipicas = zc1.radio(
+        TEXTOS['lecturasatipicas'], 
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcborrar']], horizontal=True,
+    )
+    umbral_atipicas = zc2.number_input(
+        'Umbral atípicas',
+        value=20,
+        min_value=1,
+        step=1,
+    )
+    if control_atipicas == TEXTOS['opcborrar']:
+        df_individuales = df_individuales[df_individuales[col_precipitacion] <= umbral_atipicas]
+
     # Control de perdidas ---------------------------------------------------------------------
     # Debe ser el último control pues los otros pueden borrar
     control_perdidas = zona_control.radio(
@@ -338,6 +373,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.Data
         df_individuales, 
         intervalo_base=f'{intervalo}min', 
         intervalo_grupo=agrupaciones[criterio],
+        umbral_precipitacion=umbral_atipicas,
     )
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
