@@ -5,7 +5,8 @@ secondaryBackgroundColor="#283452"
 textColor="#d7ebef"
 
 [server]
-maxUploadSize = 200
+maxUploadSize = 300
+baseUrlPath = "/analysis"
 
 [browser]
 gatherUsageStats = false

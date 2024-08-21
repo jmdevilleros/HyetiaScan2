@@ -3,14 +3,14 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Mayo 2024
+# Junio - Agosto 2024
 #
 # Archivo: mensajes_es.py - Texto de mensajes en español
 # *********************************************************************************************
 
 TEXTOS = {
     'appname'                 : 'HyetiaScan',
-    'appversion'              : '2.0',
+    'appversion'              : '2.1.0',
     'appdescription'          : 'Análisis de eventos de precipitación.',
 
     'about' : '''
@@ -25,12 +25,20 @@ TEXTOS = {
             de tiempo ordenada, con al menos una columna de fecha/hora (datetime) y
             al menos una columna numérica de precipitación.
             ''',
+    
+    'pausamaximahelp'         : '''
+            Criterio de continuidad en minutos. \n
+            Tiempo máximo de lecturas en cero para \n
+            considerarlas parte de un evento continuo.
+            ''',
 
     'stcachespinner'          : 'Cargando...',
 
     'errorlecturas'           : 'Error en archivo seleccionado.',
     'errorfechahora'          : lambda c, i, v: f'Error de formato en columna "{c}", índice {i}: [{v}]',
     'errortipocols'           : lambda t: f'No se detectan columnas de tipo {t}',
+    'errorpocoseventos'       : 'Se requieren dos o mas eventos.',
+    'errorigualintensidad'    : 'No hay diferencia de intensidades',
     
     'elegirdecimal'           : 'Separador decimal',
     'elegircodificacion'      : 'Codificación',
@@ -63,6 +71,7 @@ TEXTOS = {
     'lecturasnormalizadas'    : lambda i: f'Lecturas normalizadas a intervalos de {i} minuto{"s" if i > 1 else ""}',
     'lecturasporcontrolar'    : 'Aún quedan lecturas anormales por controlar',
     'lecturasanormales'       : 'Lecturas anormales',
+    'lecturasatipicas'        : 'Atípicas',
     'lecturasduplicadas'      : 'Duplicadas',
     'lecturascorruptas'       : 'Corruptas',
     'lecturasperdidas'        : 'Perdidas',
@@ -74,13 +83,51 @@ TEXTOS = {
     'detalleeventos'          : 'Detalle de eventos',
     'detalleacumulados'       : 'Detalle de acumulados',
     'statsacumulados'         : 'Estadísticas de acumulados',
+    'statseventos'            : 'Estadísticas de eventos',
 
     'colpacumulada'           : 'P_acumulada',
     'colcorrectas'            : 'correctas',
     'colperdidas'             : 'perdidas',
     'colduplicadas'           : 'duplicadas',
+    'colatipicas'             : 'atípicas',
     'colcorruptas'            : 'corruptas',
+    'colinicia'               : 'inicia',
+    'coltermina'              : 'termina',
+    'colduracion'             : 'duracion',
+    'colintensidad'           : 'intensidad',
+    'collecturas'             : 'lecturas',
+    'colsecuencia'            : 'secuencia',
+    'colporcentajes'          : 'porcentajes',
+    'colpercentiles'          : 'percentiles',
+    'colconteo'               : 'conteo',
+    'collluvia'               : 'lluvia',
+    'colrango'                : 'rango',
 
     'opcnomodificar'          : 'No modificar',
     'opcborrar'               : 'Borrar',
+    'opcdejarprimera'         : 'Dejar primera',
+    'opcdejarultima'          : 'Dejar última', 
+    'opcsumar'                : 'Sumar',
+    'opcpromediar'            : 'Promediar',
+    'opcasumircero'           : 'Asumir 0 (cero)',
+
+    'paramfechainicial'       : 'Fecha inicial',
+    'paramfechafinal'         : 'Fecha final',
+    'paramduracionmin'        : 'Duración mínima (minutos)',
+    'paramduracionmax'        : 'Duración máxima (minutos)',
+    'parampausamax'           : 'Pausa máxima (minutos)',
+    'paramintensidadmin'      : 'Intensidad mínima (mm/h)',
+
+    'label%duracion'          : '% duración',
+    'label%precipitacion'     : '% precipitación',
+    'labelprobabilidad'       : 'Probabilidad',
+    'labelrangosintensidad'   : 'Rangos de intensidad',
+    'labelfrecuencia'         : 'Frecuencia',
+    'labelgeneral'            : 'General',
+
+    'captionintervalprcntles' : 'Intervalo de percentiles',
+    'captionverpercentiles'   : 'Ver valores percentiles',
+    'captionpunto'            : 'Punto',
+    'captioncoma'             : 'Coma',
+    'captionnumrangos'        : 'Número de rangos',
 }

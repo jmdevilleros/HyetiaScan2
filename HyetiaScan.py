@@ -3,7 +3,7 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Mayo 2024
+# Junio - Agosto 2024
 #
 # Archivo: HyetiaScan.py - Punto de entrada a aplicación Streamlit
 # *********************************************************************************************
@@ -72,7 +72,7 @@ def obtener_archivo_lecturas() -> tuple[pd.DataFrame, str]:
         decimal = st.radio(
             TEXTOS['elegirdecimal'], 
             options=['.', ','], 
-            captions=['Punto', 'Coma'],
+            captions=[TEXTOS['captionpunto'], TEXTOS['captioncoma']],
             horizontal=True,
         )
         codificacion = st.selectbox(
@@ -178,14 +178,17 @@ def evaluar_grupo_lecturas(grupo: pd.Series) -> pd.Series:
     P_acumulada = grupo['sum'][grupo['sum'] > 0].sum()
     correctas   = grupo[TEXTOS['colcorrectas']].sum()
     perdidas    = grupo['size'][grupo['size'] == 0].count()
-    duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() en vez de count() para contar todas
+    duplicadas  = grupo['size'][grupo['size'] > 1].sum()  # sum() y no count() p/contar todas
     corruptas   = grupo['sum'][grupo['sum'] < 0].count()
+    atipicas    = grupo[TEXTOS['colatipicas']].sum()
+
     return {
-        TEXTOS['colpacumulada']  : P_acumulada, 
-        TEXTOS['colcorrectas']   : correctas, 
-        TEXTOS['colperdidas']    : perdidas, 
-        TEXTOS['colduplicadas']  : duplicadas, 
-        TEXTOS['colcorruptas']   : corruptas,
+        TEXTOS['colpacumulada'] : P_acumulada, 
+        TEXTOS['colcorrectas']  : correctas, 
+        TEXTOS['colperdidas']   : perdidas, 
+        TEXTOS['colduplicadas'] : duplicadas, 
+        TEXTOS['colcorruptas']  : corruptas,
+        TEXTOS['colatipicas']   : atipicas, 
     }
 
 # ---------------------------------------------------------------------------------------------
@@ -197,20 +200,42 @@ def relleno_perdidas(df: pd.DataFrame, intervalo: str, relleno: int = 0) -> pd.D
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
-def agrupar_lecturas(df: pd.DataFrame, intervalo_base: str, intervalo_grupo: str) -> pd.DataFrame:
+def agrupar_lecturas(
+    df: pd.DataFrame, 
+    intervalo_base: str, 
+    intervalo_grupo: str,
+    umbral_precipitacion : float = 600.0,
+) -> pd.DataFrame:
+    
     col_fechahora = df.columns[0]
     col_precipitacion = df.columns[1]
 
     # Generar secuencia de tiempo con el mismo intervalo para rellenar posibles vacíos
     # y generar valores de conteo "size" y "sum" para detección de valores anormales.
-    sec_base = df.resample(intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
-
+    sec_base = df.resample(
+        intervalo_base, on=col_fechahora)[col_precipitacion].agg({'size', 'sum'})
+    
     # Agregar columna con lecturas correctas, basadas en evaluar "sum" y "size". 
     # Se vectoriza aparte de la agregación para optimizar velocidad.
-    sec_base[TEXTOS['colcorrectas']] =  (sec_base['sum'] >= 0) & (sec_base['size'] == 1)
+    sec_base[TEXTOS['colcorrectas']] = \
+        (sec_base['sum'] >= 0) & (sec_base['sum'] <= umbral_precipitacion) \
+        & (sec_base['size'] == 1) 
+
+    # Agregar columna con número de lecturas atípicas según parámetro (inicialmente 600)
+    sec_base[TEXTOS['colatipicas']] = \
+        (sec_base['sum'] > umbral_precipitacion) & (sec_base['size'] == 1)
+
+    # print('-' * 80)
+    # print('sec_base') 
+    # print(sec_base.head())
 
     # Ahora agrupar por intervalo requerido y evaluar estadísticas de cada grupo
     sec_grupo = sec_base.resample(intervalo_grupo).apply(evaluar_grupo_lecturas)
+
+    # print('-' * 80)
+    # print('sec_grupo')
+    # for r in sec_grupo[1:30]:
+    #     print(r)
 
     # Convertir serie en DataFrame
     df_resultado = sec_grupo.apply(lambda row: pd.Series(row)).reset_index()
@@ -234,28 +259,29 @@ def ver_dataframe(df: pd.DataFrame, titulo: str = None):
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
 def controlar_duplicadas(df: pd.DataFrame, control: str) -> pd.DataFrame:
-    match control:
-        case 'Dejar primera': 
-            df = df.drop_duplicates(subset=col_fechahora, keep='first')
-        case 'Dejar última':
-            df = df.drop_duplicates(subset=col_fechahora, keep='last')
-        case 'Sumar':
-            df = df.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'sum',
-            })
-        case 'Promediar':
-            df = df.groupby(col_fechahora, as_index=False).agg({
-                col_fechahora     : 'first',
-                col_precipitacion : 'mean',
-            })
-        case 'Borrar':
-            df = df.drop_duplicates(subset=col_fechahora, keep=False)
+    col_fechahora = df.columns[0]
+    col_precipitacion = df.columns[1]
+    if control == TEXTOS['opcdejarprimera']:
+        df = df.drop_duplicates(subset=col_fechahora, keep='first')
+    elif control == TEXTOS['opcdejarultima']:
+        df = df.drop_duplicates(subset=col_fechahora, keep='last')
+    elif control == TEXTOS['opcsumar']:
+        df = df.groupby(col_fechahora, as_index=False).agg({
+            col_fechahora     : 'first',
+            col_precipitacion : 'sum',
+        })
+    elif control == TEXTOS['opcpromediar']:
+        df = df.groupby(col_fechahora, as_index=False).agg({
+            col_fechahora     : 'first',
+            col_precipitacion : 'mean',
+        })
+    elif control == TEXTOS['opcborrar']:
+        df = df.drop_duplicates(subset=col_fechahora, keep=False)
 
     return df
 
 # ---------------------------------------------------------------------------------------------
-def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.DataFrame : 
+def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.DataFrame : 
     col_fechahora = df_individuales.columns[0]
     col_precipitacion = df_individuales.columns[1]
     agrupaciones = {
@@ -268,31 +294,35 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
         TEXTOS['colperdidas'], 
         TEXTOS['colduplicadas'], 
         TEXTOS['colcorruptas'],
+        TEXTOS['colatipicas'],
     ]
     lista_anormales = lista_categorias[1:]
 
     # Preparar zonas de visualización ---------------------------------------------------------
     with st.container(border=True):
         zona_grafico_agrupadas, zona_metricas = st.columns([0.7, 0.3])
+
     with st.container(border=True):
         zona_categorias, zona_control = st.columns([0.7, 0.3], gap='medium')
+
     with st.expander(TEXTOS['detallelecturas'], expanded=False):
-        zona_detalle_agrupadas, zona_detalle_individuales = st.columns([0.7, 0.3], gap='medium')
+        zona_detalle_agrupadas, zona_detalle_individuales = \
+            st.columns([0.7, 0.3], gap='medium')
 
     # -----------------------------------------------------------------------------------------
     # Controles deben ir antes de visualizaciones, pues modifican dataframe
-    zona_control.write(TEXTOS['controlanormales'])
+    zona_control.subheader(TEXTOS['controlanormales'])
 
     # Control de duplicadas -------------------------------------------------------------------
     opcion_control_duplicadas = zona_control.radio(
         TEXTOS['lecturasduplicadas'], 
         options=[
             TEXTOS['opcnomodificar'], 
-            'Dejar primera', 
-            'Dejar última', 
-            'Sumar',
-            'Promediar',
-            'Borrar'
+            TEXTOS['opcdejarprimera'], 
+            TEXTOS['opcdejarultima'], 
+            TEXTOS['opcsumar'],
+            TEXTOS['opcpromediar'],
+            TEXTOS['opcborrar'],
         ], 
         horizontal=True,
     )
@@ -302,32 +332,48 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     # Control corruptas -----------------------------------------------------------------------
     control_corruptas = zona_control.radio(
         TEXTOS['lecturascorruptas'], 
-        options=[TEXTOS['opcnomodificar'], 'Borrar'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcborrar']], horizontal=True,
     )
-    match control_corruptas:
-        case 'Borrar':
-            df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
+    if control_corruptas == TEXTOS['opcborrar']:
+        df_individuales = df_individuales[df_individuales[col_precipitacion] >= 0]
+
+    # Control de atípicas ---------------------------------------------------------------------
+    zc1, zc2 = zona_control.columns(2)
+    control_atipicas = zc1.radio(
+        TEXTOS['lecturasatipicas'], 
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcborrar']], horizontal=True,
+    )
+    umbral_atipicas = zc2.number_input(
+        'Umbral atípicas',
+        value=20,
+        min_value=1,
+        step=1,
+    )
+    if control_atipicas == TEXTOS['opcborrar']:
+        df_individuales = df_individuales[df_individuales[col_precipitacion] <= umbral_atipicas]
 
     # Control de perdidas ---------------------------------------------------------------------
-    # Debe ser el último contgrol pues los otros pueden borrar
+    # Debe ser el último control pues los otros pueden borrar
     control_perdidas = zona_control.radio(
         TEXTOS['lecturasperdidas'], 
-        options=[TEXTOS['opcnomodificar'], 'Asumir cero'], horizontal=True,
+        options=[TEXTOS['opcnomodificar'], TEXTOS['opcasumircero']], horizontal=True,
     )
-    match control_perdidas:
-        case 'Asumir cero':
-            df_relleno = relleno_perdidas(df_individuales, intervalo=f'{intervalo}min', relleno=0)
-            if not df_relleno.empty:
-                df_individuales = pd.concat(
-                    [df_individuales, df_relleno]
-                ).sort_values(by=col_fechahora).reset_index(drop=True)
+    if control_perdidas == TEXTOS['opcasumircero']:
+        df_relleno = relleno_perdidas(df_individuales, intervalo=f'{intervalo}min', relleno=0)
+        if not df_relleno.empty:
+            df_individuales = pd.concat(
+                [df_individuales, df_relleno]
+            ).sort_values(by=col_fechahora).reset_index(drop=True)
 
     # Generar datos agrupados según criterio y calcular métricas -------------------------------
     criterio = zona_grafico_agrupadas.radio(TEXTOS['lecturasagrupadas'], 
         options=list(agrupaciones.keys()), index=1, horizontal=True,
     )
     df_agrupado   = agrupar_lecturas(
-        df_individuales, intervalo_base=f'{intervalo}min', intervalo_grupo=agrupaciones[criterio],
+        df_individuales, 
+        intervalo_base=f'{intervalo}min', 
+        intervalo_grupo=agrupaciones[criterio],
+        umbral_precipitacion=umbral_atipicas,
     )
     suma_columnas = df_agrupado[lista_categorias].sum(numeric_only=True) 
     porcentajes   = suma_columnas / suma_columnas.sum() * 100
@@ -337,7 +383,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: float) -> pd.Da
     ]
 
     # Mostrar gráfico de precipitaciones ------------------------------------------------------
-    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y='P_acumulada')
+    zona_grafico_agrupadas.line_chart(df_agrupado, x=col_fechahora, y=TEXTOS['colpacumulada'])
 
     # Mostrar gráfico de categoria de lecturas -----------------------------------------------
     categorias_elegidas = zona_categorias.multiselect(
@@ -374,7 +420,11 @@ def normalizar_lecturas(df: pd.DataFrame, intervalo_minutos: int) -> pd.DataFram
 
 # ---------------------------------------------------------------------------------------------
 @st.cache_data(show_spinner=TEXTOS['stcachespinner'])
-def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.DataFrame:
+def consolidar_lecturas(
+    df: pd.DataFrame, 
+    fecha_inicial, fecha_final, 
+    intervalo: int,
+) -> pd.DataFrame:
     # Consolidar lecturas procesadas contiguas. Lecturas de CERO separan.
 
     col_fechahora     = df.columns[0]
@@ -402,20 +452,20 @@ def consolidar_lecturas(df: pd.DataFrame, fecha_inicial, fecha_final) -> pd.Data
     ).reset_index(drop=True)
 
     # Agregar coiumna de duracion
-    df_consolidadas['duracion'] = intervalo + \
-        (df_consolidadas['termina'] - df_consolidadas['inicia']).dt.total_seconds() // 60
+    lapso = df_consolidadas[TEXTOS['coltermina']] - df_consolidadas[TEXTOS['colinicia']]
+    df_consolidadas[TEXTOS['colduracion']] = intervalo + lapso.dt.total_seconds() // 60
     
     return df_consolidadas
 
 
 # ---------------------------------------------------------------------------------------------
 def calcular_eventos(
-        df_consolidadas: pd.DataFrame, 
-        duracion_minima: int,
-        duracion_maxima: int,
-        pausa_maxima: int, 
-        intensidad_minima: int,
-        intervalo: int,
+    df_consolidadas: pd.DataFrame, 
+    duracion_minima: int,
+    duracion_maxima: int,
+    pausa_maxima: int, 
+    intensidad_minima: int,
+    intervalo: int,
 ) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
@@ -429,11 +479,13 @@ def calcular_eventos(
         # Columna auxiliar para indicar si un evento es parte de lluvia continua o no
         # True = Evento es parte de lluvia continua
         # False = No hay lluvia (duracion > pausa_maxima)
-        df['lluvia'] = \
-            (df['P_acumulada'] > 0) | ((df['duracion'] <= pausa_maxima) & (df['P_acumulada'] == 0))
+        df[TEXTOS['collluvia']] = \
+            (df[TEXTOS['colpacumulada']] > 0) | \
+            ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
-        df['secuencia'] = df['lluvia'].ne(df['lluvia'].shift()).cumsum()
+        df[TEXTOS['colsecuencia']] = \
+            df[TEXTOS['collluvia']].ne(df[TEXTOS['collluvia']].shift()).cumsum()
 
         return df
 
@@ -451,7 +503,7 @@ def calcular_eventos(
             100  - Q[2]
         ]
 
-        # Calcular el índice del mayor delta para usarlo como clasificacion de tipo de curva Huff
+        # Calcular índice del mayor delta para usarlo como clasificacion de tipo de curva Huff
         # El mayor delta indica que en ese lapso el aguacero tuvo su mayor precipitación
         # enumerate genera tuplas (indice, valor), key indica que max debe 
         # comparar por el segundo item de la tupla (x[1]), el valor que retorna 
@@ -470,47 +522,50 @@ def calcular_eventos(
     df = unir_precipitaciones(df_consolidadas, pausa_maxima)
 
     # Realizar la agregación basada en la secuencia de evento
-    df = df.groupby('secuencia').agg(
-        inicia    = ('inicia', 'first'),
-        termina   = ('termina', 'last'),
-        lecturas  = ('lecturas', lambda p: sum(p, [])),
-        P_acumulada = ('P_acumulada', 'sum'),
+    df = df.groupby(TEXTOS['colsecuencia']).agg(
+        inicia      = (TEXTOS['colinicia'], 'first'),
+        termina     = (TEXTOS['coltermina'], 'last'),
+        lecturas    = (TEXTOS['collecturas'], lambda p: sum(p, [])),
+        P_acumulada = (TEXTOS['colpacumulada'], 'sum'),
     )
 
     # Recalcular columna de duracion
-    df['duracion'] = \
-        (df['termina'] - df['inicia']).dt.total_seconds() // 60 + intervalo
+    df[TEXTOS['colduracion']] = intervalo + \
+        (df[TEXTOS['coltermina']] - df[TEXTOS['colinicia']]).dt.total_seconds() // 60
 
     # Agregar intensidad
-    df['intensidad'] = \
-        60 * df['P_acumulada'] / df['duracion']
+    df[TEXTOS['colintensidad']] = \
+        60 * df[TEXTOS['colpacumulada']] / df[TEXTOS['colduracion']]
     
     # Agregar conteo de mediciones
-    df['conteo'] = df['lecturas'].apply(len)
+    df[TEXTOS['colconteo']] = df[TEXTOS['collecturas']].apply(len)
 
     # # Filtrar precipitaciones por P_acumulada
     df = df[
-        (df['P_acumulada'] > 0)
+        (df[TEXTOS['colpacumulada']] > 0)
     ]
 
     # Filtrar por duracion
-    df = df[(df['duracion'] >= duracion_minima) & (df['duracion'] <= duracion_maxima)]
+    df = df[
+        (df[TEXTOS['colduracion']] >= duracion_minima) & \
+        (df[TEXTOS['colduracion']] <= duracion_maxima)
+    ]
 
     # # Filtrar por intensidad minima
-    df = df[(df['intensidad'] >= intensidad_minima)]
+    df = df[(df[TEXTOS['colintensidad']] >= intensidad_minima)]
 
     # Calcular y agregar porcentaje acumulado de mediciones
-    df['porcentajes'] = df['lecturas'].apply(calcular_porcentajes)
+    df[TEXTOS['colporcentajes']] = df[TEXTOS['collecturas']].apply(calcular_porcentajes)
 
     # Calcular y agregar cuartil de Huff
     df['Q_Huff'] = \
-        df['porcentajes'].apply(determinar_cuartil_huff)
+        df[TEXTOS['colporcentajes']].apply(determinar_cuartil_huff)
     
     # Reordenar columnas
     df = df[[
-        'inicia', 'termina', 'duracion', 
-        'intensidad', 'P_acumulada', 'conteo', 
-        'lecturas', 'porcentajes', 'Q_Huff',
+        TEXTOS['colinicia'], TEXTOS['coltermina'], TEXTOS['colduracion'], 
+        TEXTOS['colintensidad'], TEXTOS['colpacumulada'], TEXTOS['colconteo'], 
+        TEXTOS['collecturas'], TEXTOS['colporcentajes'], 'Q_Huff',
     ]]
 
     return df.reset_index(drop=True)
@@ -521,49 +576,46 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_precipitacion = df_procesadas.columns[1]
 
     # Definir zonas de visualización
-    #st.write('**Parámetros:**')
     c1, c2 = (st, st) #st.columns(2)
     primera_fecha = c1.date_input(
-        'Fecha inicial',
+        TEXTOS['paramfechainicial'],
         value=df_procesadas[col_fechahora].min(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
     ultima_fecha = c2.date_input(
-        'Fecha final',
+        TEXTOS['paramfechafinal'],
         value=df_procesadas[col_fechahora].max(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
     duracion_minima = c1.number_input(
-        'Duración mínima', 
+        TEXTOS['paramduracionmin'], 
         value=20,
         min_value=intervalo, 
     )
     duracion_maxima = c2.number_input(
-        "Duración maxima", 
+        TEXTOS['paramduracionmax'], 
         value=9999,
         min_value=intervalo,
     )
     pausa_maxima = c1.number_input(
-        'Pausa máxima',
+        TEXTOS['parampausamax'],
         value=intervalo * 2,
         min_value=0,
         step=intervalo,
-        help='''
-            Criterio de continuidad en minutos. \n
-            Tiempo máximo de lecturas en cero para \n
-            considerarlas parte de un evento continuo.
-        '''
+        help=TEXTOS['pausamaximahelp'],
     )
     intensidad_minima = c2.number_input(
-        'Intensidad mínima',
+        TEXTOS['paramintensidadmin'],
         value=3,
         min_value=1,
         step=1,
     )
     
-    df_consolidadas = consolidar_lecturas(df_procesadas, primera_fecha, ultima_fecha)
+    df_consolidadas = consolidar_lecturas(
+        df_procesadas, primera_fecha, ultima_fecha, intervalo
+    )
     df_eventos = calcular_eventos(
         df_consolidadas, 
         duracion_minima, duracion_maxima,
@@ -582,7 +634,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
         # Generar percentiles a partir de porcentajes de aguaceros
         # Usar intervalo especificado como argumento de la función
-        datos_huff['percentiles'] = df['porcentajes'].apply(
+        datos_huff[TEXTOS['colpercentiles']] = df[TEXTOS['colporcentajes']].apply(
             lambda p: np.percentile(p, range(intervalo, 101, intervalo))
         )
 
@@ -591,11 +643,11 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
         # Calcular curvas Huff como promedio de cada correspondiente valor de percentiles
         curvas_huff = datos_huff.groupby('Q').agg(
-            {'percentiles': lambda x: np.mean(list(zip(*x)), axis=1)}
+            {TEXTOS['colpercentiles']: lambda x: np.mean(list(zip(*x)), axis=1)}
         ).reset_index()
 
-        # Agregar un cero al principio de cada lista en 'percentiles'
-        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+        # Agregar un cero al principio de cada lista en TEXTOS['colpercentiles']
+        curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [0] + list(x)
         )
 
@@ -606,7 +658,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     zona_grafico = st.empty()
     c1, c2 = st.columns(2)
     intervalo_percentiles = c1.select_slider(
-        'Intervalo de percentiles',
+        TEXTOS['captionintervalprcntles'],
         options=[5, 10, 20, 25, 50],
         value=10,
     )
@@ -619,7 +671,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     for indice, curva in curvas_huff.iterrows():
         ax.plot(
             valores_eje_x,
-            list(curva['percentiles']),
+            list(curva[TEXTOS['colpercentiles']]),
             label=curva['Q'],
             marker=marcas[indice]
         )
@@ -630,41 +682,68 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     ax.grid(which='both', linestyle='--', linewidth=0.5)
     ax.grid(which='minor', linestyle=':', linewidth=0.5)
 
-    ax.set_xlabel('% duración')
-    ax.set_ylabel('% precipitación')
+    ax.set_xlabel(TEXTOS['label%duracion'])
+    ax.set_ylabel(TEXTOS['label%precipitacion'])
     
     ax.legend(fontsize=8)
 
     zona_grafico.pyplot(fig)
 
-    with c2.popover('Ver valores percentiles', use_container_width=True):
-        curvas_huff['percentiles'] = curvas_huff['percentiles'].apply(
+    with c2.popover(TEXTOS['captionverpercentiles'], use_container_width=True):
+        curvas_huff[TEXTOS['colpercentiles']] = curvas_huff[TEXTOS['colpercentiles']].apply(
             lambda x: [round(i, 2) for i in x]
         )
-        st.dataframe(curvas_huff, column_order=('Q', 'percentiles'), hide_index=True)
+        st.dataframe(
+            curvas_huff, 
+            column_order=('Q', TEXTOS['colpercentiles']), 
+            hide_index=True,
+        )
 
     return
 
 # ---------------------------------------------------------------------------------------------
-def preparar_curva_frecuencia(ax, df, columna):
+def preparar_curva_frecuencia(ax, df, nombrecol, zona):
 
     # Curva general
-    valores       = df[[columna]].sort_values(columna, ascending=False)
-    num_valores   = valores.shape[0]
+    valores       = df[[nombrecol]].sort_values(nombrecol, ascending=False).values.flatten()
+    num_valores   = len(valores)
     porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
-    ax.plot(porcentajes_x, valores, label='General', linestyle='-', linewidth=1.2)
+    ax.plot(porcentajes_x, valores, label=TEXTOS['labelgeneral'], linestyle='-', linewidth=1.2)
+
+    # Tabla general interpolada
+    p_objetivos = np.array(list(range(1, 11)) + list(range(20, 101, 10)))
+    xp = np.array(porcentajes_x)
+    fp = np.array(valores)
+
+    valores_interpolados = np.interp(p_objetivos, xp, fp)
+
+    zona.write(f'{TEXTOS['labelprobabilidad']} (interpolada) vs {nombrecol}')
+    tabla = pd.DataFrame({
+        TEXTOS['labelprobabilidad'] : p_objetivos, 
+        nombrecol : valores_interpolados,
+    })
+
+    zona.dataframe(
+        tabla, 
+        hide_index=True, 
+        use_container_width=True,
+        column_config={
+            nombrecol : st.column_config.NumberColumn(format='%.2f'),
+        }
+    )
 
     # Curvas por categoría Huff
     categorias = df['Q_Huff'].unique()
     categorias.sort()
     for categoria in categorias:
-        valores       = df[df['Q_Huff'] == categoria][[columna]].sort_values(columna, ascending=False)
-        num_valores   = valores.shape[0]
+        valores = \
+            df[df['Q_Huff'] == categoria][[nombrecol]].sort_values(nombrecol, ascending=False)
+        num_valores = valores.shape[0]
         porcentajes_x = [(i + 1) / num_valores * 100 for i in range(num_valores)]
         ax.plot(porcentajes_x, valores, label=categoria, linewidth=0.9, linestyle='-.')
 
-    ax.set_ylabel(columna.capitalize())
-    ax.set_xlabel('Probabilidad')
+    ax.set_ylabel(nombrecol.capitalize())
+    ax.set_xlabel(TEXTOS['labelprobabilidad'])
     
     ax.legend(fontsize=8)
     ax.grid(which='both', linestyle='--', linewidth=0.5)
@@ -676,15 +755,17 @@ def preparar_curva_frecuencia(ax, df, columna):
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_curvas_frecuencia(df_eventos):
     if df_eventos.shape[0] <= 1:
-        st.warning('Se requieren dos o mas eventos para calcular frecuencias.')
+        st.warning(TEXTOS['errorpocoseventos'])
         return
     
+    zona_graficas = st.empty()
+    zona_tabla1, _, zona_tabla2 = st.columns([0.45, 0.1, 0.45])
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
     
-    preparar_curva_frecuencia(ax_duracion, df_eventos, 'duracion')
-    preparar_curva_frecuencia(ax_precipit, df_eventos, 'P_acumulada')
+    preparar_curva_frecuencia(ax_duracion, df_eventos, TEXTOS['colduracion'], zona_tabla1)
+    preparar_curva_frecuencia(ax_precipit, df_eventos, TEXTOS['colpacumulada'], zona_tabla2)
 
-    st.pyplot(fig)
+    zona_graficas.pyplot(fig)
 
     return
 
@@ -693,19 +774,19 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     
     num_aguaceros = df_eventos.shape[0]
     if num_aguaceros <= 2:
-        st.warning('Requiere mas de dos eventos.')
+        st.warning(TEXTOS['errorpocoseventos'])
         return
 
-    intensidad_min = floor(df_eventos['intensidad'].min())
-    intensidad_max = ceil(df_eventos['intensidad'].max())
+    intensidad_min = floor(df_eventos[TEXTOS['colintensidad']].min())
+    intensidad_max = ceil(df_eventos[TEXTOS['colintensidad']].max())
 
     if intensidad_min == intensidad_max:
-        st.warning('No hay diferencia de intensidades.')
+        st.warning(TEXTOS['errorigualintensidad'])
         return
     
     zona_grafico = st.empty()
     num_rangos = st.slider(
-        'Número de rangos:', 
+        TEXTOS['captionnumrangos'], 
         value=3,
         min_value=2, 
         max_value=10,
@@ -716,15 +797,15 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     rangos = \
         [(limites_rangos[i], limites_rangos[i + 1]) for i in range(num_rangos)]
 
-    df = df_eventos[['Q_Huff', 'intensidad']].copy()
+    df = df_eventos[['Q_Huff', TEXTOS['colintensidad']]].copy()
 
-    df['rango'] = pd.cut(
-        df_eventos['intensidad'], 
+    df[TEXTOS['colrango']] = pd.cut(
+        df_eventos[TEXTOS['colintensidad']], 
         bins=limites_rangos,
         labels=[f'{t}' for t in rangos],
     )
 
-    conteo_por_categoria = df.groupby(['Q_Huff', 'rango'], observed=False).size()
+    conteo_por_categoria = df.groupby(['Q_Huff', TEXTOS['colrango']], observed=False).size()
     categorias = df['Q_Huff'].unique()
     categorias.sort()
     
@@ -742,8 +823,8 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     ax.legend(title='Cuartil', loc='upper left', bbox_to_anchor=(1, 1))
     ax.set_xticks(range(num_rangos))
     ax.set_xticklabels(rangos, rotation=45, fontsize=8)
-    ax.set_xlabel('Rangos de intensidad')
-    ax.set_ylabel('Frecuencia')
+    ax.set_xlabel(TEXTOS['labelrangosintensidad'])
+    ax.set_ylabel(TEXTOS['labelfrecuencia'])
     ax.grid(which='both', linestyle='--', linewidth=0.5, axis='y')
     ax.grid(which='minor', linestyle=':', linewidth=0.5, axis='y')
 
@@ -757,9 +838,9 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
     def calcular_acumulados_por_lapso(evento, lapsos):
-        inicia     = evento['inicia']
-        duracion   = evento['duracion']
-        lecturas   = np.array(evento['lecturas'])
+        inicia     = evento[TEXTOS['colinicia']]
+        duracion   = evento[TEXTOS['colduracion']]
+        lecturas   = np.array(evento[TEXTOS['collecturas']])
         acumulados = lecturas.cumsum()
         conteo_lecturas = len(lecturas)
         intervalo_lecturas = duracion / conteo_lecturas
@@ -773,10 +854,16 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
             lista_acumulados_por_lapso.append(acumulado_lapso)
         return pd.Series(
             data=lista_acumulados_por_lapso, 
-            index=['inicia', *[f'lapso {d} min' for d in lapsos]],
+            index=[TEXTOS['colinicia'], *[f'lapso {d} min' for d in lapsos]],
         )
 
-    return df.apply(calcular_acumulados_por_lapso, axis=1, lapsos=[10, 20, 30, 40, 50, 60, 90, 120])
+    resultado = df.apply(
+        calcular_acumulados_por_lapso, 
+        axis=1, 
+        lapsos=[10, 20, 30, 40, 50, 60, 90, 120],
+    )
+
+    return resultado
 
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
@@ -815,12 +902,22 @@ def desplegar_info_eventos(df_eventos: pd.DataFrame):
 # ---------------------------------------------------------------------------------------------
 def desplegar_eventos(df: pd.DataFrame):
     zona_seleccion = st.empty()
-    st.write('Estadísticas de eventos')
+    st.write(TEXTOS['statseventos'])
     columnas_seleccionadas = zona_seleccion.multiselect(
         'Columnas a visualizar',
-        options=df.columns, default=['inicia', 'duracion', 'P_acumulada', 'intensidad'],
+        options=df.columns, 
+        default=[
+            TEXTOS['colinicia'], 
+            TEXTOS['colduracion'], 
+            TEXTOS['colpacumulada'], 
+            TEXTOS['colintensidad'],
+            TEXTOS['colconteo'],
+        ],
     )
-    st.dataframe(df[columnas_seleccionadas].describe(include=np.number), use_container_width=False)
+    st.dataframe(
+        df[columnas_seleccionadas].describe(include=np.number), 
+        use_container_width=True,
+    )
     ver_dataframe(df[columnas_seleccionadas], TEXTOS['detalleeventos'])
 
     return
