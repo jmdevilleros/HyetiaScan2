@@ -12,7 +12,7 @@ body {
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    background-image: url("images\\HyetiaScan_Splash1.jpg");
+    background-image: url("HyetiaScan_Splash1.jpg");
     background-size: 100% 100%;    
     background-position: center;
 }
@@ -40,4 +40,15 @@ button {
     cursor: pointer;
     font-size: 18px;
     margin-top: 25px;
+}
+
+footer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    color: #fefeff;
+    background-color: rgba(191, 212, 240, 0.5);
+    padding: 10px;
+    text-align: center;
+    font-size: 12px;
 }
