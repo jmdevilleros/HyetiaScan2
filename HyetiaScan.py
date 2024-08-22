@@ -222,20 +222,12 @@ def agrupar_lecturas(
         & (sec_base['size'] == 1) 
 
     # Agregar columna con número de lecturas atípicas según parámetro (inicialmente 600)
+    # Vectorizado para optimización.
     sec_base[TEXTOS['colatipicas']] = \
         (sec_base['sum'] > umbral_precipitacion) & (sec_base['size'] == 1)
 
-    # print('-' * 80)
-    # print('sec_base') 
-    # print(sec_base.head())
-
     # Ahora agrupar por intervalo requerido y evaluar estadísticas de cada grupo
     sec_grupo = sec_base.resample(intervalo_grupo).apply(evaluar_grupo_lecturas)
-
-    # print('-' * 80)
-    # print('sec_grupo')
-    # for r in sec_grupo[1:30]:
-    #     print(r)
 
     # Convertir serie en DataFrame
     df_resultado = sec_grupo.apply(lambda row: pd.Series(row)).reset_index()
@@ -344,7 +336,7 @@ def desplegar_lecturas(df_individuales: pd.DataFrame, intervalo: int) -> pd.Data
         options=[TEXTOS['opcnomodificar'], TEXTOS['opcborrar']], horizontal=True,
     )
     umbral_atipicas = zc2.number_input(
-        'Umbral atípicas',
+        TEXTOS['captionumbralatipicas'],
         value=20,
         min_value=1,
         step=1,

@@ -130,4 +130,5 @@ TEXTOS = {
     'captionpunto'            : 'Punto',
     'captioncoma'             : 'Coma',
     'captionnumrangos'        : 'Número de rangos',
+    'captionumbralatipicas'   : 'Umbral atípicas',
 }
