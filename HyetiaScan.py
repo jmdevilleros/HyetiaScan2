@@ -37,11 +37,11 @@ def inicializar():
         st.set_page_config(
             page_title=f'{TEXTOS["appname"]} {TEXTOS["appversion"]}', 
             layout='wide', 
-            initial_sidebar_state='expanded', 
-            page_icon=':rain_cloud:',
+            initial_sidebar_state='expanded',
+            page_icon=':material/rainy:',
             menu_items={'About' : TEXTOS['about']}
         )
-    st.sidebar.subheader(f':blue[{TEXTOS["appname"]} {TEXTOS["appversion"]}] :rain_cloud:')
+    st.sidebar.subheader(f':blue[{TEXTOS["appname"]} {TEXTOS["appversion"]}]')
     st.sidebar.caption(TEXTOS['appdescription'])
 
 # ---------------------------------------------------------------------------------------------
@@ -452,12 +452,13 @@ def consolidar_lecturas(
 
 # ---------------------------------------------------------------------------------------------
 def calcular_eventos(
-    df_consolidadas: pd.DataFrame, 
+    df_consolidadas: pd.DataFrame,
     duracion_minima: int,
     duracion_maxima: int,
-    pausa_maxima: int, 
+    pausa_maxima: int,
     intensidad_minima: int,
     intervalo: int,
+    incluir_pausa_igual: bool = True,
 ) -> pd.DataFrame:
 
     # -----------------------------------------------------------------------------------------
@@ -465,15 +466,18 @@ def calcular_eventos(
         return (pd.Series(lecturas).cumsum() * factor / sum(lecturas)).to_list()
 
     # -----------------------------------------------------------------------------------------
-    def unir_precipitaciones(df: pd.DataFrame, pausa_maxima: int) -> pd.DataFrame:
+    def unir_precipitaciones(df: pd.DataFrame, pausa_maxima: int, incluir_pausa_igual: bool) -> pd.DataFrame:
         # Unifica precipitaciones según criterio de contiguidad.
 
         # Columna auxiliar para indicar si un evento es parte de lluvia continua o no
-        # True = Evento es parte de lluvia continua
-        # False = No hay lluvia (duracion > pausa_maxima)
-        df[TEXTOS['collluvia']] = \
-            (df[TEXTOS['colpacumulada']] > 0) | \
-            ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
+        if incluir_pausa_igual:
+            df[TEXTOS['collluvia']] = \
+                (df[TEXTOS['colpacumulada']] > 0) | \
+                ((df[TEXTOS['colduracion']] <= pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
+        else:
+            df[TEXTOS['collluvia']] = \
+                (df[TEXTOS['colpacumulada']] > 0) | \
+                ((df[TEXTOS['colduracion']] < pausa_maxima) & (df[TEXTOS['colpacumulada']] == 0))
 
         # Columna auxiliar para enumerar eventos continuos con un numero de secuencia
         df[TEXTOS['colsecuencia']] = \
@@ -511,7 +515,7 @@ def calcular_eventos(
     # -----------------------------------------------------------------------------------------
 
     # Consolidar eventos que se consideren contiguos
-    df = unir_precipitaciones(df_consolidadas, pausa_maxima)
+    df = unir_precipitaciones(df_consolidadas, pausa_maxima, incluir_pausa_igual)
 
     # Realizar la agregación basada en la secuencia de evento
     df = df.groupby(TEXTOS['colsecuencia']).agg(
@@ -591,6 +595,12 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         value=9999,
         min_value=intervalo,
     )
+    intensidad_minima = c2.number_input(
+        TEXTOS['paramintensidadmin'],
+        value=3,
+        min_value=1,
+        step=1,
+    )
     pausa_maxima = c1.number_input(
         TEXTOS['parampausamax'],
         value=intervalo * 2,
@@ -598,13 +608,13 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         step=intervalo,
         help=TEXTOS['pausamaximahelp'],
     )
-    intensidad_minima = c2.number_input(
-        TEXTOS['paramintensidadmin'],
-        value=3,
-        min_value=1,
-        step=1,
+    incluir_pausa_igual = c1.selectbox(
+        TEXTOS['paramincluirpausaigual'],
+        options=[True, False],
+        format_func=lambda x: TEXTOS['opcincluirpausaigual'] if x else TEXTOS['opcsepararpausaigual'],
+        help=TEXTOS['incluirpausaigualhelp'],
     )
-    
+
     df_consolidadas = consolidar_lecturas(
         df_procesadas, primera_fecha, ultima_fecha, intervalo
     )
@@ -612,7 +622,7 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         df_consolidadas, 
         duracion_minima, duracion_maxima,
         pausa_maxima, intensidad_minima, 
-        intervalo
+        intervalo, incluir_pausa_igual
     )
 
     return df_eventos
@@ -749,7 +759,7 @@ def seccion_graficar_curvas_frecuencia(df_eventos):
     if df_eventos.shape[0] <= 1:
         st.warning(TEXTOS['errorpocoseventos'])
         return
-    
+   
     zona_graficas = st.empty()
     zona_tabla1, _, zona_tabla2 = st.columns([0.45, 0.1, 0.45])
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
