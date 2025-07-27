@@ -3,14 +3,13 @@
 # Análisis de lluvias
 # Juan Manuel de Villeros Arias
 # Mónica Liliana Gallego Jaramillo
-# Junio - Agosto 2024
 #
 # Archivo: mensajes_es.py - Texto de mensajes en español
 # *********************************************************************************************
 
 TEXTOS = {
     'appname'                 : 'HyetiaScan',
-    'appversion'              : '2.1.1',
+    'appversion'              : '2.1.2',
     'appdescription'          : 'Análisis de eventos de precipitación.',
 
     'about' : '''
@@ -117,6 +116,19 @@ TEXTOS = {
     'paramduracionmax'        : 'Duración máxima (minutos)',
     'parampausamax'           : 'Pausa máxima (minutos)',
     'paramintensidadmin'      : 'Intensidad mínima (mm/h)',
+
+    'paramincluirpausaigual'  : 'Manejo de pausa máxima',
+    'opcincluirpausaigual'    : 'Incluir (es lluvia)',
+    'opcsepararpausaigual'    : 'Separar (es interrupción)',
+    'incluirpausaigualhelp'   : '''
+        Controla si las pausas en la lluvia (mediciones consecutivas en cero) con 
+        duración exactamente igual a la "pausa máxima" definida por el usuario se 
+        consideran parte del mismo evento de lluvia o como interrupciones que 
+        separan eventos. 
+        Por ejemplo, si "pausa máxima" es 15 minutos, "Incluir" tratará una pausa 
+        de exactamente 15 minutos como parte de la lluvia, mientras que "Separar" 
+        la tratará como una interrupción que divide los eventos.
+    ''',
 
     'label%duracion'          : '% duración',
     'label%precipitacion'     : '% precipitación',
