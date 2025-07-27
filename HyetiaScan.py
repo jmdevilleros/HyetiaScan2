@@ -571,61 +571,68 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
     col_fechahora = df_procesadas.columns[0]
     col_precipitacion = df_procesadas.columns[1]
 
-    # Definir zonas de visualización
-    c1, c2 = (st, st) #st.columns(2)
-    primera_fecha = c1.date_input(
+    # Parámetros de fecha
+    primera_fecha = st.date_input(
         TEXTOS['paramfechainicial'],
         value=df_procesadas[col_fechahora].min(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
-    ultima_fecha = c2.date_input(
+    ultima_fecha = st.date_input(
         TEXTOS['paramfechafinal'],
         value=df_procesadas[col_fechahora].max(),
         min_value=df_procesadas[col_fechahora].min(),
         max_value=df_procesadas[col_fechahora].max(),
     )
-    duracion_minima = c1.number_input(
-        TEXTOS['paramduracionmin'], 
+    st.caption('')
+
+    # Parámetros de precipitación
+    duracion_minima = st.number_input(
+        TEXTOS['paramduracionmin'],
         value=20,
-        min_value=intervalo, 
+        min_value=intervalo,
     )
-    duracion_maxima = c2.number_input(
-        TEXTOS['paramduracionmax'], 
+    duracion_maxima = st.number_input(
+        TEXTOS['paramduracionmax'],
         value=9999,
         min_value=intervalo,
     )
-    intensidad_minima = c2.number_input(
+    intensidad_minima = st.number_input(
         TEXTOS['paramintensidadmin'],
         value=3,
         min_value=1,
         step=1,
     )
-    pausa_maxima = c1.number_input(
+    st.caption('')
+
+    # Parámetros de continuidad
+    pausa_maxima = st.number_input(
         TEXTOS['parampausamax'],
         value=intervalo * 2,
         min_value=0,
         step=intervalo,
         help=TEXTOS['pausamaximahelp'],
     )
-    incluir_pausa_igual = c1.selectbox(
+    incluir_pausa_igual = st.selectbox(
         TEXTOS['paramincluirpausaigual'],
         options=[True, False],
-        format_func=lambda x: TEXTOS['opcincluirpausaigual'] if x else TEXTOS['opcsepararpausaigual'],
+        format_func=(
+            lambda x: TEXTOS['opcincluirpausaigual'] if x else TEXTOS['opcsepararpausaigual']
+        ),
         help=TEXTOS['incluirpausaigualhelp'],
     )
 
     df_consolidadas = consolidar_lecturas(
         df_procesadas, primera_fecha, ultima_fecha, intervalo
     )
-    df_eventos = calcular_eventos(
-        df_consolidadas, 
+    df_eventos_calculados = calcular_eventos(
+        df_consolidadas,
         duracion_minima, duracion_maxima,
-        pausa_maxima, intensidad_minima, 
+        pausa_maxima, intensidad_minima,
         intervalo, incluir_pausa_igual
     )
 
-    return df_eventos
+    return df_eventos_calculados
 
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
@@ -668,7 +675,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
     curvas_huff = calcular_curvas_huff(df_eventos, intervalo=intervalo_percentiles)
     valores_eje_x = range(0, 101, intervalo_percentiles)
 
-    fig, ax = plt.subplots(figsize=(7, 4))
+    fig, ax = plt.subplots(figsize=(6, 4))
     marcas = "vDo^"
     for indice, curva in curvas_huff.iterrows():
         ax.plot(
@@ -686,7 +693,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
 
     ax.set_xlabel(TEXTOS['label%duracion'])
     ax.set_ylabel(TEXTOS['label%precipitacion'])
-    
+
     ax.legend(fontsize=8)
 
     zona_grafico.pyplot(fig)
@@ -696,7 +703,7 @@ def seccion_graficar_curvas_huff(df_eventos: pd.DataFrame):
             lambda x: [round(i, 2) for i in x]
         )
         st.dataframe(
-            curvas_huff, 
+            curvas_huff,
             column_order=('Q', TEXTOS['colpercentiles']), 
             hide_index=True,
         )
@@ -726,8 +733,8 @@ def preparar_curva_frecuencia(ax, df, nombrecol, zona):
     })
 
     zona.dataframe(
-        tabla, 
-        hide_index=True, 
+        tabla,
+        hide_index=True,
         use_container_width=True,
         column_config={
             nombrecol : st.column_config.NumberColumn(format='%.2f'),
@@ -746,7 +753,7 @@ def preparar_curva_frecuencia(ax, df, nombrecol, zona):
 
     ax.set_ylabel(nombrecol.capitalize())
     ax.set_xlabel(TEXTOS['labelprobabilidad'])
-    
+
     ax.legend(fontsize=8)
     ax.grid(which='both', linestyle='--', linewidth=0.5)
     ax.minorticks_on()
@@ -755,17 +762,17 @@ def preparar_curva_frecuencia(ax, df, nombrecol, zona):
     return
 
 # ---------------------------------------------------------------------------------------------
-def seccion_graficar_curvas_frecuencia(df_eventos):
-    if df_eventos.shape[0] <= 1:
+def seccion_graficar_curvas_frecuencia(df: pd.DataFrame):
+    if df.shape[0] <= 1:
         st.warning(TEXTOS['errorpocoseventos'])
         return
-   
+
     zona_graficas = st.empty()
     zona_tabla1, _, zona_tabla2 = st.columns([0.45, 0.1, 0.45])
     fig, (ax_duracion, ax_precipit) = plt.subplots(1, 2, figsize=(7, 4))
-    
-    preparar_curva_frecuencia(ax_duracion, df_eventos, TEXTOS['colduracion'], zona_tabla1)
-    preparar_curva_frecuencia(ax_precipit, df_eventos, TEXTOS['colpacumulada'], zona_tabla2)
+
+    preparar_curva_frecuencia(ax_duracion, df, TEXTOS['colduracion'], zona_tabla1)
+    preparar_curva_frecuencia(ax_precipit, df, TEXTOS['colpacumulada'], zona_tabla2)
 
     zona_graficas.pyplot(fig)
 
@@ -785,24 +792,24 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     if intensidad_min == intensidad_max:
         st.warning(TEXTOS['errorigualintensidad'])
         return
-    
+
     zona_grafico = st.empty()
     num_rangos = st.slider(
-        TEXTOS['captionnumrangos'], 
+        TEXTOS['captionnumrangos'],
         value=3,
         min_value=2, 
         max_value=10,
     )
-    tamaño_rango = (intensidad_max - intensidad_min) / num_rangos
+    magnitud_rango = (intensidad_max - intensidad_min) / num_rangos
     limites_rangos = \
-        [trunc(intensidad_min + i * tamaño_rango) for i in range(num_rangos + 1)]
+        [trunc(intensidad_min + i * magnitud_rango) for i in range(num_rangos + 1)]
     rangos = \
         [(limites_rangos[i], limites_rangos[i + 1]) for i in range(num_rangos)]
 
     df = df_eventos[['Q_Huff', TEXTOS['colintensidad']]].copy()
 
     df[TEXTOS['colrango']] = pd.cut(
-        df_eventos[TEXTOS['colintensidad']], 
+        df_eventos[TEXTOS['colintensidad']],
         bins=limites_rangos,
         labels=[f'{t}' for t in rangos],
     )
@@ -810,7 +817,7 @@ def seccion_graficar_rangos_intensidad(df_eventos):
     conteo_por_categoria = df.groupby(['Q_Huff', TEXTOS['colrango']], observed=False).size()
     categorias = df['Q_Huff'].unique()
     categorias.sort()
-    
+
     fig, ax = plt.subplots(figsize=(7, 4))
     colores = ['lightblue', 'cyan', 'blue', 'navy']
     for i, categoria in enumerate(categorias):
@@ -861,7 +868,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 
     resultado = df.apply(
         calcular_acumulados_por_lapso, 
-        axis=1, 
+        axis=1,
         lapsos=[10, 20, 30, 40, 50, 60, 90, 120],
     )
 
@@ -869,7 +876,7 @@ def obtener_acumulados(df: pd.DataFrame) -> pd.DataFrame:
 
 # ---------------------------------------------------------------------------------------------
 def seccion_graficar_acumulados_lapso(df: pd.DataFrame):
-    
+
     df_acumulados = obtener_acumulados(df)
     st.write(TEXTOS['statsacumulados'])
     st.dataframe(df_acumulados.describe(include=np.number), use_container_width=True)
@@ -990,7 +997,7 @@ with tab_eventos:
         st.warning(TEXTOS['lecturasporcontrolar'])
         st.stop()
 
-    c1, c2 = st.columns([0.2, 0.8], gap='large')
+    c1, c2 = st.columns([0.15, 0.85], gap='medium')
     with c1:
         df_eventos = definir_parametros(df_lecturas_procesadas, intervalo)
     with c2:
