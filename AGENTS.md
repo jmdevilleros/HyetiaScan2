@@ -49,6 +49,7 @@ OK  Argumentos inválidos: código 2
 OK  Formatos DD/MM/AAAA, AAAA/MM/DD, zona horaria y ";"+",": mismos eventos que ISO
 OK  Último día: fecha final sin hora incluye el día completo
 OK  App Streamlit sin archivo: sin excepciones
+OK  App Streamlit con archivo: 30 eventos; con evento el último día, 31 (igual que la CLI)
 Prueba de humo superada.
 ```
 
@@ -105,7 +106,7 @@ Parámetros de eventos, con sus valores por defecto:
 - `--intensidad-minima 3`, en mm/h.
 - `--pausa-maxima`: por defecto 2 × intervalo.
 - `--pausa-igual incluir|separar`: decide si una pausa igual a la máxima se considera lluvia o interrupción.
-- `--fecha-inicial` y `--fecha-final`, en cualquiera de los formatos de fecha anteriores, con hora opcional. Una `--fecha-final` **sin hora incluye el día completo** (hasta 23:59:59). Por defecto el rango va desde el primer día hasta el día completo de la última lectura. **Diferencia con la app:** en la aplicación Streamlit la fecha final se toma a las 00:00, así que allí quedan fuera las lecturas del último día después de medianoche.
+- `--fecha-inicial` y `--fecha-final`, en cualquiera de los formatos de fecha anteriores, con hora opcional. Una `--fecha-final` **sin hora incluye el día completo** (hasta 23:59:59). Por defecto el rango va desde el primer día hasta el día completo de la última lectura. La aplicación Streamlit hace lo mismo: su "Fecha final" incluye el día completo.
 - `--agrupacion dia|mes|ano` e `--intervalo-percentiles 5|10|20|25|50`.
 
 Ayuda completa: `python hyetiascan_cli.py --help`.

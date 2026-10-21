@@ -33,6 +33,14 @@ python tests/smoke_test.py         # prueba de humo: 30 eventos en el ejemplo
 
 *************************************************************************
 
+### Cambios - Octubre 2026
+
+- **Fecha final completa:** en la aplicación y en la CLI, la fecha final incluye todo ese día (hasta 23:59:59). Antes la aplicación cortaba a las 00:00, así que dejaba fuera los eventos del último día.
+- **Más formatos de entrada** (aplicación y CLI): fechas `DD/MM/AAAA`, `AAAA/MM/DD` y con zona horaria, y columnas separadas por `;`, que permite decimales con coma.
+- **CLI:** el código de salida 3 indica lecturas anormales sin controlar, y hay opciones nuevas `--separador`, `--formato-fecha`, `--mes-primero` y `--zona-horaria`.
+
+*************************************************************************
+
 ### Cambios en versión 2.1.2 - Julio 2025
 
 #### Nueva Opción para Controlar la Inclusión de Pausas Iguales a la Pausa Máxima
@@ -75,7 +83,7 @@ Opciones principales (ver `python hyetiascan_cli.py --help`):
 
 Igual que en la aplicación, si quedan lecturas anormales sin controlar no se calculan eventos; el programa guarda las lecturas y termina con código 3. Códigos de salida: 0 correcto, 1 error de carga o de datos, 2 argumentos inválidos, 3 quedan lecturas anormales.
 
-La CLI también acepta `--separador` (`;` para archivos con `--decimal ,`), `--formato-fecha`, `--mes-primero` y `--zona-horaria`. Una `--fecha-final` sin hora incluye el día completo; la aplicación Streamlit, en cambio, toma la fecha final a las 00:00.
+La CLI también acepta `--separador` (`;` para archivos con `--decimal ,`), `--formato-fecha`, `--mes-primero` y `--zona-horaria`. Una `--fecha-final` sin hora incluye el día completo, igual que la "Fecha final" de la aplicación Streamlit.
 
 #### Como módulo de Python
 

@@ -8,7 +8,8 @@
 # 2. CLI sin control de anormales: código 3 y sin eventos.
 # 3. Archivos equivalentes en otros formatos (DD/MM/AAAA, con zona horaria, ';' con decimal ',')
 #    producen exactamente los mismos eventos que el ejemplo ISO.
-# 4. Un evento el último día se incluye (fecha final sin hora = día completo).
+# 4. Un evento el último día se incluye (fecha final sin hora = día completo), en la CLI
+#    y en la aplicación Streamlit (AppTest con el archivo cargado).
 # 5. Argumentos inválidos: código 2.
 # 6. Aplicación Streamlit (AppTest) sin archivo cargado: se ejecuta sin excepciones.
 # *********************************************************************************************
@@ -115,15 +116,18 @@ def probar_formatos_equivalentes():
     print('OK  Formatos DD/MM/AAAA, AAAA/MM/DD, zona horaria y ";"+",": mismos eventos que ISO')
 
 # ---------------------------------------------------------------------------------------------
-def probar_ultimo_dia():
-    # Agrega un evento el último día (14/04/2024 15:00-15:40)
-    filas = leer_ejemplo()
+def escribir_ultimo_dia(archivo: Path):
+    # Ejemplo con un evento adicional el último día (14/04/2024 15:00-15:40)
     lluvia = {f'2024-04-14 15:{m:02d}:00': v for m, v in zip(range(0, 45, 5), [1, 2, 3, 4, 3, 2, 1, 1, 1])}
-    ruta_filas = [f'{f},{lluvia.get(f, p)}' for f, p in filas]
+    escribir(archivo, 'fechahora,precipitacion_mm',
+             [f'{f},{lluvia.get(f, p)}' for f, p in leer_ejemplo()])
+
+# ---------------------------------------------------------------------------------------------
+def probar_ultimo_dia():
     with tempfile.TemporaryDirectory() as tmp:
         tmp = Path(tmp)
         archivo = tmp / 'ultimo_dia.csv'
-        escribir(archivo, 'fechahora,precipitacion_mm', ruta_filas)
+        escribir_ultimo_dia(archivo)
         for opciones in [(), ('--fecha-final', '2024-04-14'), ('--fecha-final', '14/04/2024')]:
             eventos = eventos_cli(tmp, 'u', archivo, *opciones)
             assert len(eventos.strip().splitlines()) - 1 == EVENTOS_ESPERADOS + 1, opciones
@@ -143,6 +147,53 @@ def probar_app_sin_archivo():
     assert TEXTOS['elegirarchivo'] in [i.value for i in at.info]
     print('OK  App Streamlit sin archivo: sin excepciones')
 
+# ---------------------------------------------------------------------------------------------
+def eventos_en_app(archivo: Path) -> int:
+    # Ejecuta la app completa con AppTest, simulando la carga del archivo en file_uploader
+    # y eligiendo los mismos controles de anormales que CONTROLES; retorna el número de eventos.
+    from streamlit.testing.v1 import AppTest
+    from streamlit.delta_generator import DeltaGenerator
+    from streamlit.runtime.uploaded_file_manager import UploadedFile, UploadedFileRec
+    from types import SimpleNamespace
+    from mensajes_es import TEXTOS
+
+    original = DeltaGenerator.file_uploader
+    def file_uploader_simulado(self, *args, **kwargs):
+        original(self, *args, **kwargs)
+        registro = UploadedFileRec('prueba', archivo.name, 'text/csv', archivo.read_bytes())
+        return UploadedFile(registro, SimpleNamespace(upload_url='', delete_url='', file_id='prueba'))
+    DeltaGenerator.file_uploader = file_uploader_simulado
+    try:
+        at = AppTest.from_file(str(RAIZ / 'HyetiaScan.py'), default_timeout=120)
+        at.run()
+        radios = {r.label: r for r in at.radio}
+        radios[TEXTOS['lecturasduplicadas']].set_value(TEXTOS['opcdejarprimera'])
+        radios[TEXTOS['lecturascorruptas']].set_value(TEXTOS['opcborrar'])
+        radios[TEXTOS['lecturasatipicas']].set_value(TEXTOS['opcborrar'])
+        radios[TEXTOS['lecturasperdidas']].set_value(TEXTOS['opcasumircero'])
+        at.run()
+        assert not at.exception, [e.value for e in at.exception]
+        # Primera tabla de estadísticas de eventos (describe): fila 'count'
+        for df in (d.value for d in at.dataframe):
+            if 'count' in df.index and TEXTOS['colduracion'] in df.columns:
+                return int(df.loc['count', TEXTOS['colduracion']])
+        raise AssertionError('La app no mostró estadísticas de eventos')
+    finally:
+        DeltaGenerator.file_uploader = original
+
+# ---------------------------------------------------------------------------------------------
+def probar_app_con_archivo():
+    n = eventos_en_app(EJEMPLO)
+    assert n == EVENTOS_ESPERADOS, f'App: {n} eventos, se esperaban {EVENTOS_ESPERADOS}'
+    with tempfile.TemporaryDirectory() as tmp:
+        archivo = Path(tmp) / 'ultimo_dia.csv'
+        escribir_ultimo_dia(archivo)
+        n = eventos_en_app(archivo)
+        assert n == EVENTOS_ESPERADOS + 1, \
+            f'App con evento el último día: {n} eventos, se esperaban {EVENTOS_ESPERADOS + 1}'
+    print(f'OK  App Streamlit con archivo: {EVENTOS_ESPERADOS} eventos; con evento el último día, '
+          f'{EVENTOS_ESPERADOS + 1} (igual que la CLI)')
+
 # =============================================================================================
 # Sección principal
 # =============================================================================================
@@ -155,4 +206,5 @@ if __name__ == '__main__':
     probar_formatos_equivalentes()
     probar_ultimo_dia()
     probar_app_sin_archivo()
+    probar_app_con_archivo()
     print('Prueba de humo superada.')
