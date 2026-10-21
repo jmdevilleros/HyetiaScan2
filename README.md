@@ -25,3 +25,9 @@ El usuario puede elegir entre:
 
 Este cambio mejora la flexibilidad del análisis de eventos de precipitación, especialmente para casos donde el criterio especificado de pausa máxima es igual al intervalo de medición, permitiendo un control más preciso sobre la definición de eventos continuos. 
 
+
+---
+
+## Licencia
+
+Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](./LICENSE).
