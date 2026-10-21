@@ -25,7 +25,6 @@ El usuario puede elegir entre:
 
 Este cambio mejora la flexibilidad del análisis de eventos de precipitación, especialmente para casos donde el criterio especificado de pausa máxima es igual al intervalo de medición, permitiendo un control más preciso sobre la definición de eventos continuos. 
 
-
 *************************************************************************
 
 ### Uso sin interfaz (CLI y módulo)
@@ -82,3 +81,9 @@ acumulados = nucleo.obtener_acumulados(eventos)
 ```
 
 `ejemplos/lluvia_ejemplo_5min.csv` es un archivo sintético (45 días, lecturas cada 5 minutos) con varios eventos, un vacío de 30 minutos, una lectura duplicada, una corrupta y una atípica, útil para probar los controles.
+
+---
+
+## Licencia
+
+Este proyecto está bajo la licencia MIT. Consulta el archivo [LICENSE](./LICENSE).
