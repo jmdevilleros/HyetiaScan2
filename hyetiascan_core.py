@@ -16,6 +16,7 @@
 # Bibliotecas
 # =============================================================================================
 
+import io
 import re
 from math import floor, ceil, trunc
 
@@ -67,15 +68,177 @@ INTERVALO_PERCENTILES    = 10
 # =============================================================================================
 
 # ---------------------------------------------------------------------------------------------
-def cargar_csv(archivo, decimal: str = '.', codificacion: str = 'utf-8') -> pd.DataFrame:
+# Formatos de fecha-hora reconocidos además de ISO 8601 (que pyarrow ya interpreta).
+# Se prueban en orden; una columna se convierte solo si TODOS sus valores cumplen un formato.
+_HORAS = [' %H:%M:%S', ' %H:%M', 'T%H:%M:%S', 'T%H:%M', '']
+_FECHAS_ANO_PRIMERO = ['%Y-%m-%d', '%Y/%m/%d', '%Y.%m.%d']
+_FECHAS_DIA_PRIMERO = ['%d/%m/%Y', '%d-%m-%Y', '%d.%m.%Y']
+_FECHAS_MES_PRIMERO = ['%m/%d/%Y', '%m-%d-%Y', '%m.%d.%Y']
+_PATRON_ZONA = re.compile(r'(Z|[+-]\d{2}:?\d{2})\s*$')
+
+# ---------------------------------------------------------------------------------------------
+def formatos_fechahora(dia_primero: bool = True) -> list[str]:
+    fechas = _FECHAS_ANO_PRIMERO + (_FECHAS_DIA_PRIMERO if dia_primero else _FECHAS_MES_PRIMERO)
+    return [f + h for f in fechas for h in _HORAS]
+
+# ---------------------------------------------------------------------------------------------
+def detectar_separador(contenido: bytes, codificacion: str = 'utf-8') -> str:
+    # Separador de columnas según la línea de encabezados: ';' o tabulador si predominan
+    # sobre ','. En cualquier otro caso ',' (comportamiento original).
+    try:
+        texto = contenido[:65536].decode(codificacion, errors='ignore').lstrip('\ufeff')
+    except LookupError:
+        return ','
+    lineas = texto.splitlines()
+    primera = lineas[0] if lineas else ''
+    conteos = {sep: primera.count(sep) for sep in [',', ';', '\t']}
+    mejor = max(conteos, key=conteos.get)
+    return mejor if conteos[mejor] > conteos[','] else ','
+
+# ---------------------------------------------------------------------------------------------
+def _convertir_con_formato(serie: pd.Series, formato: str):
+    # Retorna la serie convertida si todos los valores no nulos cumplen el formato, o None
+    valores = serie.dropna()
+    if valores.empty:
+        return None
+    muestra = valores.head(100)
+    if pd.to_datetime(muestra, format=formato, errors='coerce').isna().any():
+        return None
+    convertida = pd.to_datetime(serie, format=formato, errors='coerce')
+    if convertida[serie.notna()].isna().any():
+        return None
+    return convertida
+
+# ---------------------------------------------------------------------------------------------
+def _quitar_zona(textos: pd.Series, zona_horaria: str = None) -> tuple[pd.Series, str]:
+    # Convierte textos fecha-hora con desplazamiento (ej. -05:00, Z) a fecha-hora sin zona.
+    # Regla: con zona_horaria, se convierte a esa zona. Sin ella, si todos los valores tienen
+    # el mismo desplazamiento se conserva la hora local escrita; si hay desplazamientos
+    # distintos se convierte a UTC.
+    instantes = pd.to_datetime(textos, utc=True, format='ISO8601')
+    if zona_horaria:
+        return instantes.dt.tz_convert(zona_horaria).dt.tz_localize(None), \
+            f'convertida a la zona {zona_horaria}'
+    desplazamientos = textos.dropna().astype(str).str.extract(_PATRON_ZONA)[0]
+    desplazamientos = desplazamientos.str.replace(':', '').replace('Z', '+0000').unique()
+    if len(desplazamientos) == 1 and isinstance(desplazamientos[0], str):
+        d = desplazamientos[0]
+        signo = 1 if d[0] == '+' else -1
+        delta = pd.Timedelta(hours=int(d[1:3]), minutes=int(d[3:5])) * signo
+        return instantes.dt.tz_localize(None) + delta, f'hora local conservada (UTC{d}), zona eliminada'
+    return instantes.dt.tz_localize(None), 'desplazamientos distintos: convertida a UTC'
+
+# ---------------------------------------------------------------------------------------------
+def convertir_columnas_fechahora(
+    df: pd.DataFrame,
+    contenido: bytes = None,
+    separador: str = ',',
+    codificacion: str = 'utf-8',
+    formato_fecha: str = None,
+    dia_primero: bool = True,
+    zona_horaria: str = None,
+) -> pd.DataFrame:
+    # Convierte a fecha-hora (sin zona, resolución de segundos) las columnas de texto con
+    # formatos no ISO y las columnas con zona horaria. Las columnas ya convertidas por
+    # pyarrow (ISO sin zona) no se tocan. Las observaciones quedan en df.attrs['notas_fechahora'].
+    notas = []
+
+    # Columnas con zona horaria (pyarrow las entrega en UTC): releer el texto original
+    columnas_tz = [c for c in df.columns if isinstance(df[c].dtype, pd.DatetimeTZDtype)]
+    if columnas_tz:
+        textos = None
+        if contenido is not None:
+            textos = pd.read_csv(
+                io.BytesIO(contenido), sep=separador, encoding=codificacion,
+                usecols=columnas_tz, dtype=str,
+            )
+            if len(textos) != len(df):
+                textos = None
+        for col in columnas_tz:
+            if textos is not None:
+                df[col], nota = _quitar_zona(textos[col], zona_horaria)
+            elif zona_horaria:
+                df[col], nota = df[col].dt.tz_convert(zona_horaria).dt.tz_localize(None), \
+                    f'convertida a la zona {zona_horaria}'
+            else:
+                df[col], nota = df[col].dt.tz_localize(None), 'convertida a UTC'
+            df[col] = df[col].astype('datetime64[s]')
+            notas.append(f'{col}: {nota}')
+
+    # Columnas de texto con otros formatos de fecha
+    formatos = [formato_fecha] if formato_fecha else formatos_fechahora(dia_primero)
+    for col in df.select_dtypes(include='object').columns:
+        for formato in formatos:
+            convertida = _convertir_con_formato(df[col], formato)
+            if convertida is None:
+                continue
+            if isinstance(convertida.dtype, pd.DatetimeTZDtype):
+                convertida, nota = _quitar_zona(df[col], zona_horaria)
+                notas.append(f'{col}: {nota}')
+            df[col] = convertida.astype('datetime64[s]')
+            notas.append(f'{col}: formato {formato}')
+            # Advertir ambigüedad día/mes cuando ambos órdenes son válidos y difieren
+            if not formato_fecha and formato.startswith(('%d', '%m')):
+                alterno = formato.replace('%d', '#').replace('%m', '%d').replace('#', '%m')
+                otra = _convertir_con_formato(convertida.dt.strftime(formato), alterno)
+                if otra is not None and not otra.equals(pd.to_datetime(convertida)):
+                    notas.append(
+                        f'{col}: fechas ambiguas (día y mes <= 12); se asumió '
+                        f'{"día primero" if dia_primero else "mes primero"}'
+                    )
+            break
+
+    if notas:
+        df.attrs['notas_fechahora'] = notas
+    return df
+
+# ---------------------------------------------------------------------------------------------
+def cargar_csv(
+    archivo,
+    decimal: str = '.',
+    codificacion: str = 'utf-8',
+    separador: str = None,
+    formato_fecha: str = None,
+    dia_primero: bool = True,
+    zona_horaria: str = None,
+) -> pd.DataFrame:
     # archivo puede ser una ruta o un objeto tipo archivo. Las excepciones se propagan.
-    return pd.read_csv(
-        archivo, 
+    # separador None: se detecta (',' salvo que el encabezado use ';' o tabulador).
+    if hasattr(archivo, 'read'):
+        contenido = archivo.read()
+    else:
+        with open(archivo, 'rb') as f:
+            contenido = f.read()
+    if separador is None:
+        separador = detectar_separador(contenido, codificacion)
+    df = pd.read_csv(
+        io.BytesIO(contenido), 
+        sep=separador,
         decimal=decimal, 
         encoding=codificacion, 
         parse_dates=True, 
         engine='pyarrow',
     )
+    return convertir_columnas_fechahora(
+        df, contenido, separador, codificacion, formato_fecha, dia_primero, zona_horaria,
+    )
+
+# ---------------------------------------------------------------------------------------------
+def interpretar_fecha(texto: str, dia_primero: bool = True) -> tuple[pd.Timestamp, bool]:
+    # Interpreta una fecha o fecha-hora de parámetro. Retorna (fecha, tiene_hora).
+    texto = str(texto).strip()
+    for formato in formatos_fechahora(dia_primero):
+        try:
+            fecha = pd.to_datetime(texto, format=formato)
+        except (ValueError, TypeError):
+            continue
+        return fecha, '%H' in formato
+    raise ValueError(f'Fecha no reconocida: "{texto}"')
+
+# ---------------------------------------------------------------------------------------------
+def fin_del_dia(fecha) -> pd.Timestamp:
+    # Último instante del día de fecha (23:59:59.999999999)
+    return pd.Timestamp(fecha).normalize() + pd.Timedelta(days=1) - pd.Timedelta(1, 'ns')
 
 # ---------------------------------------------------------------------------------------------
 def verificar_lecturas_cargadas(df: pd.DataFrame) -> bool:

@@ -366,8 +366,9 @@ def definir_parametros(df_procesadas: pd.DataFrame, intervalo: int) -> pd.DataFr
         help=TEXTOS['incluirpausaigualhelp'],
     )
 
+    # La fecha final incluye el día completo (hasta 23:59:59), igual que en la CLI
     df_consolidadas = consolidar_lecturas(
-        df_procesadas, primera_fecha, ultima_fecha, intervalo
+        df_procesadas, primera_fecha, nucleo.fin_del_dia(ultima_fecha), intervalo
     )
     df_eventos_calculados = nucleo.calcular_eventos(
         df_consolidadas,

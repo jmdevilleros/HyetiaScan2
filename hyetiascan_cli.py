@@ -36,12 +36,15 @@ AGRUPACIONES = {
     'ano' : nucleo.AGRUPACION_ANO,
 }
 
+SEPARADORES = {'tab': '\t', '\\t': '\t'}
+
 COLUMNAS_LISTA = [TEXTOS['collecturas'], TEXTOS['colporcentajes'], TEXTOS['colpercentiles']]
 
 # Códigos de salida
 SALIDA_OK          = 0
 SALIDA_ERROR       = 1
-SALIDA_ANORMALES   = 2
+SALIDA_ARGUMENTOS  = 2   # argparse, argumentos inválidos
+SALIDA_ANORMALES   = 3
 
 # =============================================================================================
 # Procedimientos y funciones
@@ -56,10 +59,20 @@ def crear_parser() -> argparse.ArgumentParser:
             'controla lecturas anormales y calcula eventos de lluvia (Huff, acumulados). '
             'Usa la misma lógica que la aplicación Streamlit.'
         ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=(
-            'Igual que en la aplicación, si quedan lecturas anormales sin controlar '
-            '(perdidas, duplicadas, corruptas o atípicas) no se calculan eventos y el '
-            f'programa termina con código {SALIDA_ANORMALES}.'
+            'Códigos de salida:\n'
+            f'  {SALIDA_OK}  correcto (puede haber 0 eventos)\n'
+            f'  {SALIDA_ERROR}  error de carga o de datos\n'
+            f'  {SALIDA_ARGUMENTOS}  argumentos inválidos\n'
+            f'  {SALIDA_ANORMALES}  quedan lecturas anormales sin controlar (perdidas, duplicadas,\n'
+            '     corruptas o atípicas): igual que en la aplicación, no se calculan eventos.\n'
+            '\n'
+            'Fechas reconocidas: ISO (AAAA-MM-DD HH:MM[:SS], también con T), AAAA/MM/DD,\n'
+            'DD/MM/AAAA, DD-MM-AAAA y DD.MM.AAAA (hora opcional HH:MM[:SS]). Con fechas\n'
+            'ambiguas se asume día primero (use --mes-primero para MM/DD/AAAA). Valores con\n'
+            'zona (-05:00, Z): se conserva la hora local escrita si todos tienen el mismo\n'
+            'desplazamiento; si no, se convierten a UTC o a --zona-horaria.'
         ),
     )
     parser.add_argument('archivo', help='Archivo CSV de lecturas.')
@@ -69,6 +82,18 @@ def crear_parser() -> argparse.ArgumentParser:
     carga = parser.add_argument_group('Carga de archivo')
     carga.add_argument('--decimal', choices=['.', ','], default='.',
         help='Separador decimal. Por defecto: "%(default)s"')
+    carga.add_argument('--separador', default=None,
+        help=(
+            'Separador de columnas ("," ";" "tab" o "|"). Por defecto se detecta en el '
+            'encabezado: ";" o tabulador si predominan sobre ",". Use ";" con --decimal ,'
+        ))
+    carga.add_argument('--formato-fecha', default=None,
+        help='Formato strftime de la columna de fecha-hora, ej. "%%d/%%m/%%Y %%H:%%M". '
+             'Por defecto se detecta.')
+    carga.add_argument('--mes-primero', action='store_true',
+        help='Interpretar fechas con barras/guiones como MM/DD/AAAA (por defecto DD/MM/AAAA).')
+    carga.add_argument('--zona-horaria', default=None,
+        help='Zona IANA (ej. America/Bogota) a la que se convierten fechas con zona horaria.')
     carga.add_argument('--codificacion', default='utf-8',
         help='Codificación del archivo (utf-8, utf-16, latin-1, ...). Por defecto: %(default)s')
     carga.add_argument('--col-fechahora', default=None,
@@ -93,11 +118,11 @@ def crear_parser() -> argparse.ArgumentParser:
 
     eventos = parser.add_argument_group('Parámetros de eventos')
     eventos.add_argument('--fecha-inicial', default=None,
-        help='Fecha inicial (AAAA-MM-DD). Por defecto: fecha de la primera lectura.')
+        help='Fecha inicial (AAAA-MM-DD, con hora opcional). Por defecto: la primera lectura.')
     eventos.add_argument('--fecha-final', default=None,
         help=(
-            'Fecha final (AAAA-MM-DD). Por defecto: fecha de la última lectura. '
-            'Igual que en la aplicación, una fecha sin hora se toma a las 00:00.'
+            'Fecha final (AAAA-MM-DD, con hora opcional). Una fecha sin hora incluye el día '
+            'completo (hasta 23:59:59). Por defecto: el día completo de la última lectura.'
         ))
     eventos.add_argument('--duracion-minima', type=int, default=nucleo.DURACION_MINIMA,
         help='Duración mínima en minutos. Por defecto: %(default)s')
@@ -164,10 +189,25 @@ def main(argv=None) -> int:
     salida = Path(args.salida)
 
     # Carga ------------------------------------------------------------------------------------
+    separador = SEPARADORES.get(args.separador, args.separador)
+    if separador is None:
+        try:
+            separador = nucleo.detectar_separador(Path(args.archivo).read_bytes(), args.codificacion)
+        except OSError as ex:
+            return error(f'{TEXTOS["errorlecturas"]} {ex}')
+        if args.decimal == ',' and separador == ',':
+            print('Aviso: --decimal , con columnas separadas por ","; si el archivo usa ";" '
+                  'indique --separador ";" (o ponga los valores entre comillas).', file=sys.stderr)
     try:
-        df_archivo = nucleo.cargar_csv(args.archivo, decimal=args.decimal, codificacion=args.codificacion)
+        df_archivo = nucleo.cargar_csv(
+            args.archivo, decimal=args.decimal, codificacion=args.codificacion,
+            separador=separador, formato_fecha=args.formato_fecha,
+            dia_primero=not args.mes_primero, zona_horaria=args.zona_horaria,
+        )
     except Exception as ex:
         return error(f'{TEXTOS["errorlecturas"]} {ex}')
+    for nota in df_archivo.attrs.get('notas_fechahora', []):
+        print(f'Aviso: {nota}', file=sys.stderr)
     if not nucleo.verificar_lecturas_cargadas(df_archivo):
         return error(TEXTOS['errorlecturas'])
 
@@ -179,7 +219,7 @@ def main(argv=None) -> int:
         error_fh = nucleo.buscar_errores_fechahora(df_archivo)
         if error_fh is not None:
             print(TEXTOS['errorfechahora'](*error_fh), file=sys.stderr)
-        return error(str(ex))
+        return error(f'{ex}. Revise el formato de fecha (--formato-fecha, --mes-primero).')
 
     # Lecturas ---------------------------------------------------------------------------------
     df_lecturas = nucleo.extraer_lecturas(df_archivo, col_fechahora, col_precipitacion)
@@ -214,6 +254,8 @@ def main(argv=None) -> int:
         'col_fechahora'      : col_fechahora,
         'col_precipitacion'  : col_precipitacion,
         'intervalo_minutos'  : intervalo,
+        'separador'          : separador,
+        'notas_fechahora'    : df_archivo.attrs.get('notas_fechahora', []),
         'parametros'         : {k: v for k, v in vars(args).items() if k not in ('archivo', 'json')},
         'categorias_lecturas': {
             k: {'cantidad': a_json(suma_columnas[k]), 'porcentaje': a_json(porcentajes[k])}
@@ -232,9 +274,21 @@ def main(argv=None) -> int:
         codigo = SALIDA_ANORMALES
     else:
         fechas = df_procesadas[df_procesadas.columns[0]]
-        # Como st.date_input en la aplicación: por defecto solo la fecha (sin hora)
-        fecha_inicial = args.fecha_inicial or fechas.min().date()
-        fecha_final   = args.fecha_final or fechas.max().date()
+        dia_primero = not args.mes_primero
+        try:
+            if args.fecha_inicial:
+                fecha_inicial, _ = nucleo.interpretar_fecha(args.fecha_inicial, dia_primero)
+            else:
+                fecha_inicial = fechas.min().normalize()
+            # Una fecha final sin hora incluye el día completo (la aplicación usa las 00:00)
+            if args.fecha_final:
+                fecha_final, tiene_hora = nucleo.interpretar_fecha(args.fecha_final, dia_primero)
+                if not tiene_hora:
+                    fecha_final = nucleo.fin_del_dia(fecha_final)
+            else:
+                fecha_final = nucleo.fin_del_dia(fechas.max())
+        except ValueError as ex:
+            return error(str(ex))
         pausa_maxima  = intervalo * 2 if args.pausa_maxima is None else args.pausa_maxima
 
         df_consolidadas = nucleo.consolidar_lecturas(
