@@ -13,6 +13,26 @@ Contacto: hyetiascan@teoktonos.com
 
 *************************************************************************
 
+### Instalación
+
+Requiere **Python 3.13** (ver `.python-version`). Las dependencias están fijadas en `requirements.txt`.
+
+```bash
+git clone https://github.com/jmdevilleros/HyetiaScan2
+cd HyetiaScan2
+python3 -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python tests/smoke_test.py         # prueba de humo: 30 eventos en el ejemplo
+```
+
+- Aplicación web: `streamlit run HyetiaScan.py` y abrir http://localhost:8501/analysis
+- Sin interfaz: `python hyetiascan_cli.py ENTRADA.csv --duplicadas primera --corruptas borrar --atipicas borrar --perdidas cero --json`
+
+**Agentes autónomos:** leer [AGENTS.md](./AGENTS.md). Ahí están los comandos exactos, el formato del CSV de entrada (fecha-hora ISO `AAAA-MM-DD HH:MM:SS`, precipitación en mm por lectura, separador `,`), los códigos de salida y las columnas de cada archivo de resultados.
+
+*************************************************************************
+
 ### Cambios en versión 2.1.2 - Julio 2025
 
 #### Nueva Opción para Controlar la Inclusión de Pausas Iguales a la Pausa Máxima
