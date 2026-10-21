@@ -44,7 +44,10 @@ Resultado esperado (código de salida 0):
 
 ```
 OK  CLI con controles: código 0, 30 eventos
-OK  CLI sin controles: código 2 (quedan lecturas anormales), sin eventos
+OK  CLI sin controles: código 3 (quedan lecturas anormales), sin eventos
+OK  Argumentos inválidos: código 2
+OK  Formatos DD/MM/AAAA, AAAA/MM/DD, zona horaria y ";"+",": mismos eventos que ISO
+OK  Último día: fecha final sin hora incluye el día completo
 OK  App Streamlit sin archivo: sin excepciones
 Prueba de humo superada.
 ```
@@ -60,13 +63,25 @@ Debe terminar con código 0 e imprimir `Eventos: 30`.
 
 ## Formato del CSV de entrada
 
-- Separado por comas, con una fila de encabezados. Debe tener al menos 2 filas y 2 columnas.
-- **Columna de fecha-hora** en ISO 8601 sin zona horaria: `AAAA-MM-DD HH:MM:SS`, `AAAA-MM-DD HH:MM` o `AAAA-MM-DDTHH:MM:SS`. Otros formatos (`01/03/2024 00:05`, `2024/03/01 ...`) y fechas con zona horaria **no** se reconocen como fecha-hora, y la CLI termina con error.
+- Una fila de encabezados, al menos 2 filas y 2 columnas.
+- **Separador de columnas**: se detecta en el encabezado. Se usa `,` salvo que predominen `;` o el tabulador. Para forzarlo: `--separador ";"` (o `","`, `tab`, `"|"`).
+- **Columna de fecha-hora**. Formatos reconocidos, con hora opcional `HH:MM` o `HH:MM:SS`:
+  - ISO `AAAA-MM-DD HH:MM:SS`, también con `T` (`AAAA-MM-DDTHH:MM:SS`);
+  - `AAAA/MM/DD` y `AAAA.MM.DD`;
+  - `DD/MM/AAAA`, `DD-MM-AAAA` y `DD.MM.AAAA`.
+
+  Una columna solo se convierte si **todos** sus valores cumplen el mismo formato.
+  - **Día o mes primero:** por defecto se asume **día primero** (`05/03/2024` = 5 de marzo). Para archivos `MM/DD/AAAA` usa `--mes-primero`. Si todas las fechas son ambiguas (día y mes ≤ 12), la CLI lo avisa en stderr y en `resumen.json` (`notas_fechahora`).
+  - **Formato explícito**, para cualquier otro caso: `--formato-fecha "%d/%m/%Y %H:%M"` (strftime).
+  - **Zona horaria** (`2024-03-01T00:05:00-05:00`, `...Z`): si todos los valores tienen el mismo desplazamiento, se conserva la hora local escrita y se quita la zona. Si hay desplazamientos distintos, se convierten a UTC. Con `--zona-horaria America/Bogota` se convierten a esa zona. El resultado siempre es una fecha-hora sin zona.
+  - Si no se reconoce ninguna columna de fecha-hora, la CLI termina con código 1 e indica el primer valor con problemas.
 - **Columna de precipitación** numérica, en **mm por lectura** (lo acumulado en cada intervalo). No debe ser una intensidad.
 - Las lecturas deben ir en orden cronológico y a intervalo regular (por ejemplo cada 5 min). El intervalo se estima con la moda de las diferencias entre las primeras 1000 lecturas.
-- Separador decimal `.` por defecto. Con `--decimal ,` los valores deben ir entre comillas (`"1,5"`), porque la coma también separa columnas.
+- **Separador decimal** `.` por defecto. Con `--decimal ,`, el archivo debe separar columnas con `;` (se detecta solo) o poner los valores entre comillas (`"1,5"`).
 - Codificación `utf-8` por defecto; usa `--codificacion latin-1` (u otra) si hace falta.
-- Puede haber más columnas. Por defecto se toman la primera columna de fecha-hora y la primera numérica. Si hay varias columnas numéricas, indícalas: `--col-fechahora NOMBRE --col-precipitacion NOMBRE`.
+- Puede haber más columnas. Por defecto se toman la primera columna de fecha-hora y la primera numérica. Si hay varias, indícalas: `--col-fechahora NOMBRE --col-precipitacion NOMBRE`.
+
+La aplicación Streamlit usa el mismo cargador: también reconoce estos formatos de fecha, la zona horaria y el separador `;`, siempre con día primero y sin opciones adicionales en pantalla.
 
 Ejemplo: `ejemplos/lluvia_ejemplo_5min.csv`, con columnas `fechahora,precipitacion_mm`.
 
@@ -82,7 +97,7 @@ python hyetiascan_cli.py ENTRADA.csv --salida resultados_hyetiascan \
 - `--atipicas borrar`: elimina las lecturas mayores que `--umbral-atipicas` (20 mm por defecto).
 - `--perdidas cero`: rellena con 0 las lecturas faltantes. Se aplica después de los otros controles, así que también rellena lo que estos borran.
 
-Sin estos controles, si el archivo tiene lecturas anormales **no se calculan eventos** (código 2).
+Sin estos controles, si el archivo tiene lecturas anormales **no se calculan eventos** (código 3).
 
 Parámetros de eventos, con sus valores por defecto:
 
@@ -90,7 +105,7 @@ Parámetros de eventos, con sus valores por defecto:
 - `--intensidad-minima 3`, en mm/h.
 - `--pausa-maxima`: por defecto 2 × intervalo.
 - `--pausa-igual incluir|separar`: decide si una pausa igual a la máxima se considera lluvia o interrupción.
-- `--fecha-inicial` y `--fecha-final` (`AAAA-MM-DD`). Una fecha final sin hora se toma a las 00:00, igual que en la app, así que el último día queda fuera salvo que indiques la hora: `--fecha-final "2024-04-14 23:55"`.
+- `--fecha-inicial` y `--fecha-final`, en cualquiera de los formatos de fecha anteriores, con hora opcional. Una `--fecha-final` **sin hora incluye el día completo** (hasta 23:59:59). Por defecto el rango va desde el primer día hasta el día completo de la última lectura. **Diferencia con la app:** en la aplicación Streamlit la fecha final se toma a las 00:00, así que allí quedan fuera las lecturas del último día después de medianoche.
 - `--agrupacion dia|mes|ano` e `--intervalo-percentiles 5|10|20|25|50`.
 
 Ayuda completa: `python hyetiascan_cli.py --help`.
@@ -101,7 +116,8 @@ Ayuda completa: `python hyetiascan_cli.py --help`.
 |---|---|
 | 0 | Correcto. Se calcularon eventos (puede haber 0 eventos). |
 | 1 | Error de carga o de datos: archivo ilegible, falta una columna de fecha-hora o numérica, columna inexistente o de tipo incorrecto, o intervalo no estimable. El mensaje va a stderr con el prefijo `Error:`. Una excepción no controlada también termina con 1 (traceback de Python). |
-| 2 | Quedan lecturas anormales sin controlar. Se escriben las lecturas, pero no los eventos; en stderr aparece `Aún quedan lecturas anormales por controlar`. **Ojo:** argparse también usa el código 2 para argumentos inválidos; en ese caso stderr empieza con `usage:`. |
+| 2 | Argumentos inválidos (argparse). stderr empieza con `usage:`. |
+| 3 | Quedan lecturas anormales sin controlar. Se escriben las lecturas, pero no los eventos; en stderr aparece `Aún quedan lecturas anormales por controlar`. |
 
 ## Archivos de salida (en `--salida`, por defecto `resultados_hyetiascan/`)
 
@@ -131,7 +147,7 @@ lecturas = nucleo.procesar_lecturas(
 )
 fechas = lecturas['fechahora']
 consolidadas = nucleo.consolidar_lecturas(
-    lecturas, fechas.min().date(), fechas.max().date(), intervalo)
+    lecturas, fechas.min().normalize(), nucleo.fin_del_dia(fechas.max()), intervalo)
 eventos = nucleo.calcular_eventos(
     consolidadas, duracion_minima=20, duracion_maxima=9999,
     pausa_maxima=2 * intervalo, intensidad_minima=3,

@@ -29,7 +29,7 @@ python tests/smoke_test.py         # prueba de humo: 30 eventos en el ejemplo
 - Aplicación web: `streamlit run HyetiaScan.py` y abrir http://localhost:8501/analysis
 - Sin interfaz: `python hyetiascan_cli.py ENTRADA.csv --duplicadas primera --corruptas borrar --atipicas borrar --perdidas cero --json`
 
-**Agentes autónomos:** leer [AGENTS.md](./AGENTS.md). Ahí están los comandos exactos, el formato del CSV de entrada (fecha-hora ISO `AAAA-MM-DD HH:MM:SS`, precipitación en mm por lectura, separador `,`), los códigos de salida y las columnas de cada archivo de resultados.
+**Agentes autónomos:** leer [AGENTS.md](./AGENTS.md). Ahí están los comandos exactos, el formato del CSV de entrada (fecha-hora ISO `AAAA-MM-DD HH:MM:SS`, `DD/MM/AAAA HH:MM` o `AAAA/MM/DD`, con o sin zona horaria; precipitación en mm por lectura; separador `,` o `;`), los códigos de salida y las columnas de cada archivo de resultados.
 
 *************************************************************************
 
@@ -73,7 +73,9 @@ Opciones principales (ver `python hyetiascan_cli.py --help`):
 - Control de anormales: `--duplicadas {no-modificar,primera,ultima,sumar,promediar,borrar}`, `--corruptas borrar`, `--atipicas borrar`, `--umbral-atipicas` (20), `--perdidas cero`.
 - Eventos: `--fecha-inicial`, `--fecha-final`, `--duracion-minima` (20), `--duracion-maxima` (9999), `--intensidad-minima` (3), `--pausa-maxima` (2 × intervalo), `--pausa-igual {incluir,separar}`, `--intervalo-percentiles` (10).
 
-Igual que en la aplicación, si quedan lecturas anormales sin controlar no se calculan eventos; el programa guarda las lecturas y termina con código 2.
+Igual que en la aplicación, si quedan lecturas anormales sin controlar no se calculan eventos; el programa guarda las lecturas y termina con código 3. Códigos de salida: 0 correcto, 1 error de carga o de datos, 2 argumentos inválidos, 3 quedan lecturas anormales.
+
+La CLI también acepta `--separador` (`;` para archivos con `--decimal ,`), `--formato-fecha`, `--mes-primero` y `--zona-horaria`. Una `--fecha-final` sin hora incluye el día completo; la aplicación Streamlit, en cambio, toma la fecha final a las 00:00.
 
 #### Como módulo de Python
 
@@ -90,7 +92,7 @@ lecturas = nucleo.procesar_lecturas(
 )
 fechas = lecturas['fechahora']
 consolidadas = nucleo.consolidar_lecturas(
-    lecturas, fechas.min().date(), fechas.max().date(), intervalo)
+    lecturas, fechas.min().normalize(), nucleo.fin_del_dia(fechas.max()), intervalo)
 eventos = nucleo.calcular_eventos(
     consolidadas, duracion_minima=20, duracion_maxima=9999,
     pausa_maxima=2 * intervalo, intensidad_minima=3,
